@@ -11,7 +11,7 @@ maintainers = [
     {name = "Lars Butler", email = "lars.butler@gmail.com"},
 ]
 description = "Pure Python conversion library for common geospatial data formats"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 keywords = [
     "esri",
     "ewkb",
@@ -32,12 +32,11 @@ classifiers = [
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
