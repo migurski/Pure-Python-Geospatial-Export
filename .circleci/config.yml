@@ -91,11 +91,6 @@ jobs:
                     # Persist the entire workspace, including the
                     # checked-out repo and the venv we just created.
                     - "."
-    build_test_package_py39:
-        <<: *py39_container
-        steps:
-            - build_test_package:
-                py_ver: "39"
     build_test_package_py310:
         <<: *py310_container
         steps:
