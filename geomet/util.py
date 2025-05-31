@@ -40,7 +40,7 @@ def block_splitter(data, block_size):
     :param data:
         Any iterable. If ``data`` is a generator, it will be exhausted,
         obviously.
-    :param int block_site:
+    :param int block_size:
         Desired (maximum) block size.
     """
     buf = []

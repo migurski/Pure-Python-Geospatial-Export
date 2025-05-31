@@ -186,8 +186,8 @@ def _round_and_pad(value, decimals):
         str of the rounded value
     """
     if isinstance(value, int) and decimals != 0:
-        # if we get an int coordinate and we have a non-zero value for
-        # `decimals`, we want to create a float to pad out.
+        # If the coordinate is an integer and decimals is non-zero,
+        # convert it to a float for padding.
         value = float(value)
 
     elif decimals == 0:

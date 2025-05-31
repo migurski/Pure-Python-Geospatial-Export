@@ -19,7 +19,7 @@ Install the latest version from [PyPI](https://pypi.org/project/geomet/):
 
 ## Functionality
 
-Converion functions are exposed through idiomatic `load/loads/dump/dumps`
+Conversion functions are exposed through idiomatic `load/loads/dump/dumps`
 interfaces.
 
 GeoMet is intended to cover all common use cases for dealing with 2D, 3D, and
@@ -37,7 +37,7 @@ GeoMet is intended to cover all common use cases for dealing with 2D, 3D, and
 
 ## Example usage
 
-Coverting a 'Point' GeoJSON object to WKT:
+Converting a 'Point' GeoJSON object to WKT:
 
     >>> from geomet import wkt
     >>> point = {'type': 'Point', 'coordinates': [116.4, 45.2, 11.1]}
@@ -88,7 +88,7 @@ Converting 'Point' WKT to GeoJSON:
     >>> wkt.loads('POINT(10 20)')
     {'type': 'Point', 'coordinates': [10.0, 20.0]}
 
-Coverting 'GeometryCollection' WKT to GeoJSON:
+Converting 'GeometryCollection' WKT to GeoJSON:
 
     >>> wkt.loads('GEOMETRYCOLLECTION(POINT(10 20),POLYGON(((0 0), (10 30), (30 10), (0 0)))')
     {'type': 'GeometryCollection', 'geometries': [{'type': 'Point', 'coordinates': [10.0, 20.0]}, {'type': 'Polygon', 'coordinates': [[[0.0, 0.0]], [[10.0, 30.0]], [[30.0, 10.0]], [[0.0, 0.0]]]}]}
@@ -133,7 +133,7 @@ The source of this issue was largely due to a dependency on
 [GEOS](https://libgeos.org/), which is written in C/C++. Depending on GEOS
 requires any data conversion bug fixes to happen upstream, which takes time
 and effort. Ultimately, this was the inspiration to create a more
-lightweight, pure-Python conversion library as an alterntive tool for
+lightweight, pure-Python conversion library as an alternative tool for
 reliably converting data between various geospatial formats.
 
 The name "GeoMet" was inspired by "met", the German word for
@@ -142,9 +142,9 @@ the word "geometry".
 
 ## Limitations
 
-### Outputing "empty" geometries to binary formats is not supported
+### Outputting "empty" geometries to binary formats is not supported
 
-Attempting to output an empty geometry to a binary format will result in an exception: `ValueError: Empty geometries cannot be represented in WKB. Reason: The dimensionality of the WKB would be ambiguous.` There are a few reasons for this this limitation:
+Attempting to output an empty geometry to a binary format will result in an exception: `ValueError: Empty geometries cannot be represented in WKB. Reason: The dimensionality of the WKB would be ambiguous.` There are a few reasons for this limitation:
 - Any `EMTPY` geometry (e.g., `POINT EMPTY`, `MULTIPOLYGON EMPTY`, etc.) cannot be converted into binary format because binary formats such as WKB require an explicit dimension type (2d, Z, M, or ZM). This means that some objects cannot be reliably converted to and from different formats in a [bijective](https://en.wikipedia.org/wiki/Bijection) manner.
 - The [GeoJSON standard](https://www.rfc-editor.org/rfc/rfc7946) does have a way of representing empty geometries; however, details are minimal and the dimensionality of such an object remains ambiguous.
 - Representing some geometry types (such as points and lines) as "empty" is [deeply flawed to begin with](http://aleph0.clarku.edu/~djoyce/elements/bookI/defI1.html). For example, a point can represent any location in 2d, 3d, or 4d space. However, a point is infinitesimally small (it has no size) and it can't contain anything (it can't be "full"), therefore, it doesn't make sense for a point to be "empty".

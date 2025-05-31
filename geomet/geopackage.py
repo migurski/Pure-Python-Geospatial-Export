@@ -33,7 +33,7 @@ def dump(obj, dest_file, big_endian=True):
     :param dest_file:
         Open and writable file-like object.
     :param bool big_endian:
-        specify endianess of the dumped object.
+        Specifies the endianess of the dumped object.
 
     :return:
     """
@@ -83,10 +83,11 @@ def dumps(obj, big_endian=True):
     denoting that this geometry has no coordinates.
 
     Please note that while this library can parse geopackages
-    with a mixed byte-order in the header, it will only produce
-    blobs with consistent byte order (albeit properly marked as such).
-    That means you cannot product a geopackage with e.g. little-endian
-    header and big-endian WKB geometry.
+    with mixed byte orders in the header, it will only generate
+    blobs with a consistent byte order (which will be correctly
+    indicated). For example, it is not possible to produce a
+    geopackage with a little-endian header and a big-endian WKB
+    geometry
 
     :param dict obj:
         The geojson geometry to dump
@@ -244,11 +245,10 @@ def _header_is_little_endian(header):
 
 def _parse_header(header):
     """
-    Unpack all information from the geopackage
-    header, including "magic" GP bytes. Returns
-    all of them so we can confirm that this
-    geopackage is validly formed. Can also accept
-    the full binary blob.
+    Extracts all information from the GeoPackage header,
+    including the "magic" GP bytes. Returns the fields
+    to allow validation of the GeoPackage's structure.
+    Also accepts the full binary blob as input.
 
     :param header:
         the header or the full geometry.

@@ -20,7 +20,7 @@ merged to the `master` branch.
 5. Ensure that all CI/CD tests and checks pass.
 6. Obtain a review/approval from a Maintainer.
 7. Trigger the manual approval gate in CircleCI to publish the package.
-8. Verify that the publishing step was successul. (Check CircleCI output, check PyPI.)
+8. Verify that the publishing step was successful. (Check CircleCI output, check PyPI.)
 9. Merge the pull request.
 10. Create a Tag and a Release from the head commit of the branch. The release
    text should contain some relevant information about features/bugfixes that
