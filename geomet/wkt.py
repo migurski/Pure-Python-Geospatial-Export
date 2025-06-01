@@ -19,8 +19,6 @@ import geomet
 from geomet import util
 
 """
-Well-known text is a scheme for writing a simple features geometry into a standard text string.
-
 Well-Known Text (WKT) is a text-based format for representing geometric objects
 in a human-readable way with standard text strings.
 

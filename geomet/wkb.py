@@ -22,9 +22,9 @@ from itertools import chain
 
 """
 Well-Known Binary (WKB) is a format used to encode simple geometric features
-using a platform-independent byte array. It's commonly used for transferring 
-spatial data between systems or applications. By using WKB, systems can share 
-geometry data without relying on their internal storage formats, improving 
+using a platform-independent byte array. It's commonly used for transferring
+spatial data between systems or applications. By using WKB, systems can share
+geometry data without relying on their internal storage formats, improving
 compatibility and interoperability.
 """
 
