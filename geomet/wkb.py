@@ -196,13 +196,13 @@ def dumps(obj, big_endian=True):
         simplicity, we assume that geometry that looks 3D contains XYZ
         components, instead of XYM.
 
-        If the coordinates list contains no coordinate values, including within
-        nested structures such as [[[[], []], []]], the geometry is considered
-        empty. Geometries other than points have a valid "empty" representation
-        in WKB; however, without knowing the number of
+        If the coordinates list contains no coordinate values, including
+        within nested structures such as [[[[], []], []]], the geometry is
+        considered empty. Geometries other than points have a valid "empty"
+        representation in WKB; however, without knowing the number of
         coordinate values per vertex, the type is ambiguous, and thus we don't
-        know if the geometry type is 2D, Z, M, or ZM. In such cases, a ValueError
-        will be raised.
+        know if the geometry type is 2D, Z, M, or ZM. In such cases, a
+        ValueError will be raised.
 
     :param dict obj:
         GeoJson-like `dict` object.
