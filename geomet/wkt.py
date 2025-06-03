@@ -18,6 +18,21 @@ import tokenize
 import geomet
 from geomet import util
 
+"""
+Well-Known Text (WKT) is a text-based format for representing geometric objects
+in a human-readable way with standard text strings.
+
+Examples:
+
+A point in WKT looks like this:
+POINT (30 10)
+
+A line string (a connected sequence of points):
+LINESTRING (30 10, 10 30, 40 40)
+
+A polygon:
+POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))
+"""
 
 INVALID_WKT_FMT = 'Invalid WKT: `%s`'
 
@@ -186,8 +201,8 @@ def _round_and_pad(value, decimals):
         str of the rounded value
     """
     if isinstance(value, int) and decimals != 0:
-        # if we get an int coordinate and we have a non-zero value for
-        # `decimals`, we want to create a float to pad out.
+        # If the coordinate is an integer and decimals is non-zero,
+        # convert it to a float for padding.
         value = float(value)
 
     elif decimals == 0:

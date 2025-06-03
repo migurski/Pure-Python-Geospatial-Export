@@ -20,6 +20,14 @@ from geomet.util import as_bin_str
 from geomet.util import flatten_multi_dim
 from itertools import chain
 
+"""
+Well-Known Binary (WKB) is a format used to encode simple geometric features
+using a platform-independent byte array. It's commonly used for transferring
+spatial data between systems or applications. By using WKB, systems can share
+geometry data without relying on their internal storage formats, improving
+compatibility and interoperability.
+"""
+
 #: '\x00': The first byte of any WKB string. Indicates big endian byte
 #: ordering for the data.
 BIG_ENDIAN = b'\x00'
@@ -196,13 +204,13 @@ def dumps(obj, big_endian=True):
         simplicity, we assume that geometry that looks 3D contains XYZ
         components, instead of XYM.
 
-        If the coordinates list has no coordinate values (this includes nested
-        lists, for example, `[[[[],[]], []]]`, the geometry is considered to be
-        empty. Geometries, with the exception of points, have a reasonable
-        "empty" representation in WKB; however, without knowing the number of
-        coordinate values per vertex, the type is ambigious, and thus we don't
-        know if the geometry type is 2D, Z, M, or ZM. Therefore in this case
-        we expect a `ValueError` to be raised.
+        If the coordinates list contains no coordinate values, including
+        within nested structures such as [[[[], []], []]], the geometry is
+        considered empty. Geometries other than points have a valid "empty"
+        representation in WKB; however, without knowing the number of
+        coordinate values per vertex, the type is ambiguous, and thus we don't
+        know if the geometry type is 2D, Z, M, or ZM. In such cases, a
+        ValueError will be raised.
 
     :param dict obj:
         GeoJson-like `dict` object.
