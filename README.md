@@ -2,6 +2,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/ff3)
 [![geomet](https://circleci.com/gh/geomet/geomet.svg?style=shield)](https://app.circleci.com/pipelines/github/geomet)
+[![PyPI version](https://badge.fury.io/py/geomet.svg)](https://badge.fury.io/py/geomet)
 
 Pure-Python conversion library for common geospatial data formats.
 Supported formats include:
