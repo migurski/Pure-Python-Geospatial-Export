@@ -155,6 +155,60 @@ def export_to_shapefile_from_rows(
         )
 
 
+def export_to_geojson_from_rows(
+    rows: Iterator[Dict[str, Any]],
+    output_path: str,
+    geom_key: str,
+    geom_format: GeometryFormat,
+) -> None:
+    """
+    Export row iterator to GeoJSON format.
+
+    Args:
+        rows: Iterator yielding dictionaries with geometry and other data
+        output_path: Path for the output GeoJSON file
+        geom_key: Key for the geometry field in the row dictionary
+        geom_format: Format of geometry data (WKT or GeoJSON)
+    """
+    # Get sample rows for schema detection
+    sample_rows, full_rows = _get_sample_rows(rows, 100)
+    if not sample_rows:
+        return
+
+    # Initialize GeoJSON FeatureCollection
+    geojson = {"type": "FeatureCollection", "features": []}
+
+    # Export all rows
+    for row in full_rows:
+        # Extract geometry
+        geometry = row[geom_key]
+
+        # Convert WKT to GeoJSON if needed
+        if geom_format == GeometryFormat.WKT:
+            if isinstance(geometry, str):
+                # Convert WKT to GeoJSON using shapely
+                shapely_geom = shapely.from_wkt(geometry)
+                geometry = shapely_geom.__geo_interface__
+            else:
+                # Already a dict, assume it's GeoJSON
+                geometry = geometry
+        else:  # GeoJSON
+            if isinstance(geometry, str):
+                geometry = json.loads(geometry)
+
+        # Create properties dict with all non-geometry fields
+        properties = {k: v for k, v in row.items() if k != geom_key}
+
+        # Create feature
+        feature = {"type": "Feature", "geometry": geometry, "properties": properties}
+
+        geojson["features"].append(feature)
+
+    # Write GeoJSON file
+    with open(output_path, "w") as f:
+        json.dump(geojson, f, indent=2)
+
+
 def process_bigquery_rows_to_geopackage(
     rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
 ) -> None:
@@ -211,3 +265,29 @@ def process_snowflake_rows_to_shapefile(
         output_path: Path for output Shapefile (without extension)
     """
     export_to_shapefile_from_rows(rows, output_path, "GEOM", GeometryFormat.GEOJSON)
+
+
+def process_bigquery_rows_to_geojson(
+    rows: Iterator[Dict[str, Any]], output_path: str
+) -> None:
+    """
+    Process BigQuery row iterator and export to GeoJSON.
+
+    Args:
+        rows: Iterator yielding dictionaries with 'geom' and other fields
+        output_path: Path for output GeoJSON file
+    """
+    export_to_geojson_from_rows(rows, output_path, "geom", GeometryFormat.WKT)
+
+
+def process_snowflake_rows_to_geojson(
+    rows: Iterator[Dict[str, Any]], output_path: str
+) -> None:
+    """
+    Process Snowflake row iterator and export to GeoJSON.
+
+    Args:
+        rows: Iterator yielding dictionaries with 'GEOM' and other fields
+        output_path: Path for output GeoJSON file
+    """
+    export_to_geojson_from_rows(rows, output_path, "GEOM", GeometryFormat.GEOJSON)

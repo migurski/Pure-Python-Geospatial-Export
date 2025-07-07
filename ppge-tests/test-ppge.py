@@ -9,6 +9,7 @@ import unittest
 import csv
 import geopandas
 import shapely
+import json
 import ppge
 
 
@@ -73,6 +74,36 @@ class TestGeospatialExport(unittest.TestCase):
         # Check that Colorado polygon contains the specified point
         colorado_point = shapely.Point(-105.8, 39.1)
         self.assertTrue(colorado_row.geometry.contains(colorado_point))
+
+    def validate_geojson_data(self, geojson_path, name_column="name"):
+        """
+        Validate that the exported GeoJSON data contains the expected states and geometry.
+
+        Args:
+            geojson_path: Path to the GeoJSON file
+            name_column: Name of the column containing state names
+        """
+        # Read GeoJSON file
+        with open(geojson_path, "r") as f:
+            geojson_data = json.load(f)
+
+        # Check that it's a FeatureCollection
+        self.assertEqual(geojson_data["type"], "FeatureCollection")
+
+        # Check that we have exactly 2 features
+        self.assertEqual(len(geojson_data["features"]), 2)
+
+        # Check first feature (Wyoming)
+        wyoming_feature = geojson_data["features"][0]
+        self.assertEqual(wyoming_feature["properties"][name_column], "Wyoming")
+        self.assertEqual(wyoming_feature["type"], "Feature")
+        self.assertEqual(wyoming_feature["geometry"]["type"], "Polygon")
+
+        # Check second feature (Colorado)
+        colorado_feature = geojson_data["features"][1]
+        self.assertEqual(colorado_feature["properties"][name_column], "Colorado")
+        self.assertEqual(colorado_feature["type"], "Feature")
+        self.assertEqual(colorado_feature["geometry"]["type"], "Polygon")
 
     def test_bigquery_rows_to_geopackage(self):
         """Test BigQuery CSV row iterator to GeoPackage export."""
@@ -171,6 +202,40 @@ class TestGeospatialExport(unittest.TestCase):
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "NAME")
+
+    def test_bigquery_rows_to_geojson(self):
+        """Test BigQuery CSV row iterator to GeoJSON export."""
+        rows = list(csv_row_iterator(self.bigquery_csv))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("geom", rows[0])
+        self.assertIn("name", rows[0])
+
+        output_path = os.path.join(self.temp_dir, "test_bigquery_rows.geojson")
+        ppge.process_bigquery_rows_to_geojson(rows, output_path)
+
+        # Verify file was created
+        self.assertTrue(os.path.exists(output_path))
+        self.assertGreater(os.path.getsize(output_path), 0)
+
+        # Validate the exported data using GeoJSON validation
+        self.validate_geojson_data(output_path, "name")
+
+    def test_snowflake_rows_to_geojson(self):
+        """Test Snowflake CSV row iterator to GeoJSON export."""
+        rows = list(csv_row_iterator(self.snowflake_csv))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("GEOM", rows[0])
+        self.assertIn("NAME", rows[0])
+
+        output_path = os.path.join(self.temp_dir, "test_snowflake_rows.geojson")
+        ppge.process_snowflake_rows_to_geojson(rows, output_path)
+
+        # Verify file was created
+        self.assertTrue(os.path.exists(output_path))
+        self.assertGreater(os.path.getsize(output_path), 0)
+
+        # Validate the exported data using GeoJSON validation
+        self.validate_geojson_data(output_path, "NAME")
 
 
 if __name__ == "__main__":
