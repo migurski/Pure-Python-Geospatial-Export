@@ -50,26 +50,26 @@ class TestGeospatialExport(unittest.TestCase):
     def validate_exported_data(self, gdf, name_column="name"):
         """
         Validate that the exported data contains the expected states and geometry.
-        
+
         Args:
             gdf: GeoDataFrame to validate
             name_column: Name of the column containing state names
         """
         # Check that we have exactly 2 rows
         self.assertEqual(len(gdf), 2)
-        
+
         # Check first row (Wyoming)
         wyoming_row = gdf.iloc[0]
         self.assertEqual(wyoming_row[name_column], "Wyoming")
-        
+
         # Check that Wyoming polygon contains the specified point
         wyoming_point = shapely.Point(-107.5, 43.0)
         self.assertTrue(wyoming_row.geometry.contains(wyoming_point))
-        
+
         # Check second row (Colorado)
         colorado_row = gdf.iloc[1]
         self.assertEqual(colorado_row[name_column], "Colorado")
-        
+
         # Check that Colorado polygon contains the specified point
         colorado_point = shapely.Point(-105.8, 39.1)
         self.assertTrue(colorado_row.geometry.contains(colorado_point))
@@ -80,14 +80,14 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
-        
+
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows.gpkg")
         ppge.process_bigquery_rows_to_geopackage(rows, output_path, "test_table")
-        
+
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
         self.assertGreater(os.path.getsize(output_path), 0)
-        
+
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(output_path)
         self.validate_exported_data(gdf, "name")
@@ -98,14 +98,14 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
-        
+
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows.gpkg")
         ppge.process_snowflake_rows_to_geopackage(rows, output_path, "test_table")
-        
+
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
         self.assertGreater(os.path.getsize(output_path), 0)
-        
+
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(output_path)
         self.validate_exported_data(gdf, "NAME")
@@ -116,27 +116,27 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
-        
+
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows")
         ppge.process_bigquery_rows_to_shapefile(rows, output_path)
-        
+
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
         shx_file = f"{output_path}.shx"
         dbf_file = f"{output_path}.dbf"
         prj_file = f"{output_path}.prj"
-        
+
         self.assertTrue(os.path.exists(shp_file))
         self.assertTrue(os.path.exists(shx_file))
         self.assertTrue(os.path.exists(dbf_file))
         self.assertTrue(os.path.exists(prj_file))
-        
+
         # Verify files have content
         self.assertGreater(os.path.getsize(shp_file), 0)
         self.assertGreater(os.path.getsize(shx_file), 0)
         self.assertGreater(os.path.getsize(dbf_file), 0)
         self.assertGreater(os.path.getsize(prj_file), 0)
-        
+
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "name")
@@ -147,27 +147,27 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
-        
+
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows")
         ppge.process_snowflake_rows_to_shapefile(rows, output_path)
-        
+
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
         shx_file = f"{output_path}.shx"
         dbf_file = f"{output_path}.dbf"
         prj_file = f"{output_path}.prj"
-        
+
         self.assertTrue(os.path.exists(shp_file))
         self.assertTrue(os.path.exists(shx_file))
         self.assertTrue(os.path.exists(dbf_file))
         self.assertTrue(os.path.exists(prj_file))
-        
+
         # Verify files have content
         self.assertGreater(os.path.getsize(shp_file), 0)
         self.assertGreater(os.path.getsize(shx_file), 0)
         self.assertGreater(os.path.getsize(dbf_file), 0)
         self.assertGreater(os.path.getsize(prj_file), 0)
-        
+
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "NAME")
