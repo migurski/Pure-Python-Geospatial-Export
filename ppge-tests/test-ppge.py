@@ -9,13 +9,7 @@ import unittest
 import csv
 import geopandas
 import shapely
-
-from ppge.geospatial_export import (
-    process_bigquery_rows_to_geopackage,
-    process_snowflake_rows_to_geopackage,
-    process_bigquery_rows_to_shapefile,
-    process_snowflake_rows_to_shapefile,
-)
+import ppge
 
 
 def csv_row_iterator(csv_path: str):
@@ -88,7 +82,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("name", rows[0])
         
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows.gpkg")
-        process_bigquery_rows_to_geopackage(rows, output_path, "test_table")
+        ppge.process_bigquery_rows_to_geopackage(rows, output_path, "test_table")
         
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
@@ -106,7 +100,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("NAME", rows[0])
         
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows.gpkg")
-        process_snowflake_rows_to_geopackage(rows, output_path, "test_table")
+        ppge.process_snowflake_rows_to_geopackage(rows, output_path, "test_table")
         
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
@@ -124,7 +118,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("name", rows[0])
         
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows")
-        process_bigquery_rows_to_shapefile(rows, output_path)
+        ppge.process_bigquery_rows_to_shapefile(rows, output_path)
         
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
@@ -155,7 +149,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("NAME", rows[0])
         
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows")
-        process_snowflake_rows_to_shapefile(rows, output_path)
+        ppge.process_snowflake_rows_to_shapefile(rows, output_path)
         
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
