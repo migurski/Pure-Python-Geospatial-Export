@@ -9,6 +9,13 @@ import shapefile
 import shapely
 import json
 from typing import Iterator, Dict, Any
+from enum import Enum
+
+
+class GeometryFormat(Enum):
+    """Enumeration of supported geometry formats."""
+    WKT = "WKT"
+    GEOJSON = "GeoJSON"
 
 
 def export_to_geopackage_from_rows(
@@ -17,7 +24,7 @@ def export_to_geopackage_from_rows(
     table_name: str = "geodata",
     name_key: str = "name",
     geom_key: str = "geom",
-    geom_format: str = "WKT"
+    geom_format: GeometryFormat = GeometryFormat.WKT
 ) -> None:
     """
     Export row iterator to GeoPackage format.
@@ -28,7 +35,7 @@ def export_to_geopackage_from_rows(
         table_name: Name of the table within the GeoPackage
         name_key: Key for the name field in the row dictionary
         geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data ("WKT" or "GeoJSON")
+        geom_format: Format of geometry data (WKT or GeoJSON)
     """
     with geopackage.GeoPackage(output_path) as gpkg:
         tbl = gpkg.create(
@@ -44,10 +51,10 @@ def export_to_geopackage_from_rows(
             geometry = row[geom_key]
             
             # Convert GeoJSON string to dictionary if needed
-            if geom_format == "GeoJSON" and isinstance(geometry, str):
+            if geom_format == GeometryFormat.GEOJSON and isinstance(geometry, str):
                 geometry = json.loads(geometry)
             
-            tbl.insert({"name": name, "Shape": geometry}, geom_format=geom_format)
+            tbl.insert({"name": name, "Shape": geometry}, geom_format=geom_format.value)
 
 
 def export_to_shapefile_from_rows(
@@ -55,7 +62,7 @@ def export_to_shapefile_from_rows(
     output_path: str,
     name_key: str = "name",
     geom_key: str = "geom",
-    geom_format: str = "WKT"
+    geom_format: GeometryFormat = GeometryFormat.WKT
 ) -> None:
     """
     Export row iterator to Shapefile format.
@@ -65,7 +72,7 @@ def export_to_shapefile_from_rows(
         output_path: Path for the output Shapefile (without extension)
         name_key: Key for the name field in the row dictionary
         geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data ("WKT" or "GeoJSON")
+        geom_format: Format of geometry data (WKT or GeoJSON)
     """
     with shapefile.Writer(f"{output_path}.shp", shapeType=5) as shp:
         shp.field("name", "C")
@@ -74,7 +81,7 @@ def export_to_shapefile_from_rows(
             name = row[name_key]
             geometry = row[geom_key]
             
-            if geom_format == "WKT":
+            if geom_format == GeometryFormat.WKT:
                 coords = geomet.wkt.loads(geometry)["coordinates"]
             else:  # GeoJSON
                 coords = shapely.from_geojson(geometry).__geo_interface__["coordinates"]
@@ -102,7 +109,7 @@ def process_bigquery_rows_to_geopackage(
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    export_to_geopackage_from_rows(rows, output_path, table_name, "name", "geom", "WKT")
+    export_to_geopackage_from_rows(rows, output_path, table_name, "name", "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_geopackage(
@@ -118,7 +125,7 @@ def process_snowflake_rows_to_geopackage(
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    export_to_geopackage_from_rows(rows, output_path, table_name, "NAME", "GEOM", "GeoJSON")
+    export_to_geopackage_from_rows(rows, output_path, table_name, "NAME", "GEOM", GeometryFormat.GEOJSON)
 
 
 def process_bigquery_rows_to_shapefile(
@@ -132,7 +139,7 @@ def process_bigquery_rows_to_shapefile(
         rows: Iterator yielding dictionaries with 'geom' and 'name' keys
         output_path: Path for output Shapefile (without extension)
     """
-    export_to_shapefile_from_rows(rows, output_path, "name", "geom", "WKT")
+    export_to_shapefile_from_rows(rows, output_path, "name", "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_shapefile(
@@ -146,4 +153,4 @@ def process_snowflake_rows_to_shapefile(
         rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
         output_path: Path for output Shapefile (without extension)
     """
-    export_to_shapefile_from_rows(rows, output_path, "NAME", "GEOM", "GeoJSON")
+    export_to_shapefile_from_rows(rows, output_path, "NAME", "GEOM", GeometryFormat.GEOJSON)
