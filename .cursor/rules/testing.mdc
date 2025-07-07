@@ -1,0 +1,10 @@
+---
+description: Import CLI Help
+globs: 
+alwaysApply: true
+---
+
+- This is a Python project
+- Expect that a virtualenv .venv directory already exists and use it when it does
+- When we run tests in this project, we use the unittest module with this command: `python -m unittest ppge-tests/test-*.py`
+- The project linter is ruff, new commits should always pass lint.

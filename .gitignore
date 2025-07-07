@@ -1,2 +1,3 @@
 .venv
 wy-co.*
+__pycache__
