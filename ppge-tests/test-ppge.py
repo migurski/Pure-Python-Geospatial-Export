@@ -6,7 +6,7 @@ Test cases for Pure Python Geospatial Export (PPGE) module.
 import os
 import tempfile
 import unittest
-import pandas
+import csv
 
 from ppge.geospatial_export import (
     process_bigquery_rows_to_geopackage,
@@ -24,19 +24,20 @@ def csv_row_iterator(csv_path: str):
     Yields:
         dict: Row dictionaries with all columns
     """
-    df = pandas.read_csv(csv_path)
-    for _, row in df.iterrows():
-        yield dict(row)
+    with open(csv_path, "r", newline="") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            yield row
 
 
 class TestGeospatialExport(unittest.TestCase):
     """Test cases for geospatial export functionality using row iterators."""
-    
+
     def setUp(self):
         self.bigquery_csv = "wy-co-wkt-bigquery.csv"
         self.snowflake_csv = "wy-co-geojson-snowflake.csv"
         self.temp_dir = tempfile.mkdtemp()
-    
+
     def tearDown(self):
         for filename in os.listdir(self.temp_dir):
             filepath = os.path.join(self.temp_dir, filename)

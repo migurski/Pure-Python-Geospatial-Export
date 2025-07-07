@@ -13,61 +13,65 @@ import json
 from typing import Iterator, Dict, Any
 
 
-def create_geodataframe_from_bigquery_rows(rows: Iterator[Dict[str, Any]]) -> geopandas.GeoDataFrame:
+def create_geodataframe_from_bigquery_rows(
+    rows: Iterator[Dict[str, Any]],
+) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from BigQuery row iterator with WKT geometry.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'geom' and 'name' keys
-        
+
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
     data = []
     geometries = []
-    
+
     for row in rows:
         data.append({"name": row["name"]})
         geometries.append(row["geom"])
-    
+
     gs = geopandas.GeoSeries.from_wkt(geometries)
     gdf = geopandas.GeoDataFrame(data, geometry=gs, crs="EPSG:4326")
     return gdf
 
 
-def create_geodataframe_from_snowflake_rows(rows: Iterator[Dict[str, Any]]) -> geopandas.GeoDataFrame:
+def create_geodataframe_from_snowflake_rows(
+    rows: Iterator[Dict[str, Any]],
+) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from Snowflake row iterator with GeoJSON geometry.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
-        
+
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
     data = []
     geometries = []
-    
+
     for row in rows:
         data.append({"NAME": row["NAME"]})
         geometries.append(shapely.from_geojson(row["GEOM"]))
-    
+
     gs = geopandas.GeoSeries(geometries)
     gdf = geopandas.GeoDataFrame(data, geometry=gs, crs="EPSG:4326")
     return gdf
 
 
 def export_to_geopackage_from_rows(
-    rows: Iterator[Dict[str, Any]], 
-    output_path: str, 
+    rows: Iterator[Dict[str, Any]],
+    output_path: str,
     table_name: str = "geodata",
     name_key: str = "name",
     geom_key: str = "geom",
-    geom_format: str = "WKT"
+    geom_format: str = "WKT",
 ) -> None:
     """
     Export row iterator to GeoPackage format.
-    
+
     Args:
         rows: Iterator yielding dictionaries with name and geometry data
         output_path: Path for the output GeoPackage file
@@ -88,24 +92,24 @@ def export_to_geopackage_from_rows(
         for row in rows:
             name = row[name_key]
             geometry = row[geom_key]
-            
+
             # Convert GeoJSON string to dictionary if needed
             if geom_format == "GeoJSON" and isinstance(geometry, str):
                 geometry = json.loads(geometry)
-            
+
             tbl.insert({"name": name, "Shape": geometry}, geom_format=geom_format)
 
 
 def export_to_shapefile_from_rows(
-    rows: Iterator[Dict[str, Any]], 
+    rows: Iterator[Dict[str, Any]],
     output_path: str,
     name_key: str = "name",
     geom_key: str = "geom",
-    geom_format: str = "WKT"
+    geom_format: str = "WKT",
 ) -> None:
     """
     Export row iterator to Shapefile format.
-    
+
     Args:
         rows: Iterator yielding dictionaries with name and geometry data
         output_path: Path for the output Shapefile (without extension)
@@ -119,12 +123,12 @@ def export_to_shapefile_from_rows(
         for row in rows:
             name = row[name_key]
             geometry = row[geom_key]
-            
+
             if geom_format == "WKT":
                 coords = geomet.wkt.loads(geometry)["coordinates"]
             else:  # GeoJSON
                 coords = shapely.from_geojson(geometry).__geo_interface__["coordinates"]
-            
+
             shp.record(name=name)
             shp.poly(coords)
 
@@ -136,13 +140,11 @@ def export_to_shapefile_from_rows(
 
 
 def process_bigquery_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], 
-    output_path: str, 
-    table_name: str = "geodata"
+    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str = "geodata"
 ) -> None:
     """
     Process BigQuery row iterator and export to GeoPackage.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'geom' and 'name' keys
         output_path: Path for output GeoPackage
@@ -152,28 +154,27 @@ def process_bigquery_rows_to_geopackage(
 
 
 def process_snowflake_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], 
-    output_path: str, 
-    table_name: str = "geodata"
+    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str = "geodata"
 ) -> None:
     """
     Process Snowflake row iterator and export to GeoPackage.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    export_to_geopackage_from_rows(rows, output_path, table_name, "NAME", "GEOM", "GeoJSON")
+    export_to_geopackage_from_rows(
+        rows, output_path, table_name, "NAME", "GEOM", "GeoJSON"
+    )
 
 
 def process_bigquery_rows_to_shapefile(
-    rows: Iterator[Dict[str, Any]], 
-    output_path: str
+    rows: Iterator[Dict[str, Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to Shapefile.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'geom' and 'name' keys
         output_path: Path for output Shapefile (without extension)
@@ -182,12 +183,11 @@ def process_bigquery_rows_to_shapefile(
 
 
 def process_snowflake_rows_to_shapefile(
-    rows: Iterator[Dict[str, Any]], 
-    output_path: str
+    rows: Iterator[Dict[str, Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to Shapefile.
-    
+
     Args:
         rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
         output_path: Path for output Shapefile (without extension)
@@ -199,10 +199,10 @@ def process_snowflake_rows_to_shapefile(
 def create_geodataframe_from_bigquery(df: pandas.DataFrame) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from BigQuery DataFrame with WKT geometry.
-    
+
     Args:
         df: DataFrame with 'geom' and 'name' columns
-        
+
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
@@ -214,10 +214,10 @@ def create_geodataframe_from_bigquery(df: pandas.DataFrame) -> geopandas.GeoData
 def create_geodataframe_from_snowflake(df: pandas.DataFrame) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from Snowflake DataFrame with GeoJSON geometry.
-    
+
     Args:
         df: DataFrame with 'GEOM' and 'NAME' columns
-        
+
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
@@ -231,7 +231,7 @@ def export_to_geopackage(
 ) -> None:
     """
     Export GeoDataFrame to GeoPackage format.
-    
+
     Args:
         gdf: GeoDataFrame to export
         output_path: Path for the output GeoPackage file
@@ -255,7 +255,7 @@ def export_to_geopackage(
 def export_to_shapefile(gdf: geopandas.GeoDataFrame, output_path: str) -> None:
     """
     Export GeoDataFrame to Shapefile format.
-    
+
     Args:
         gdf: GeoDataFrame to export
         output_path: Path for the output Shapefile (without extension)
@@ -280,7 +280,7 @@ def process_bigquery_to_geopackage(
 ) -> None:
     """
     Process BigQuery DataFrame and export to GeoPackage.
-    
+
     Args:
         df: BigQuery DataFrame with 'geom' and 'name' columns
         output_path: Path for output GeoPackage
@@ -295,7 +295,7 @@ def process_snowflake_to_geopackage(
 ) -> None:
     """
     Process Snowflake DataFrame and export to GeoPackage.
-    
+
     Args:
         df: Snowflake DataFrame with 'GEOM' and 'NAME' columns
         output_path: Path for output GeoPackage
@@ -308,7 +308,7 @@ def process_snowflake_to_geopackage(
 def process_bigquery_to_shapefile(df: pandas.DataFrame, output_path: str) -> None:
     """
     Process BigQuery DataFrame and export to Shapefile.
-    
+
     Args:
         df: BigQuery DataFrame with 'geom' and 'name' columns
         output_path: Path for output Shapefile (without extension)
@@ -320,7 +320,7 @@ def process_bigquery_to_shapefile(df: pandas.DataFrame, output_path: str) -> Non
 def process_snowflake_to_shapefile(df: pandas.DataFrame, output_path: str) -> None:
     """
     Process Snowflake DataFrame and export to Shapefile.
-    
+
     Args:
         df: Snowflake DataFrame with 'GEOM' and 'NAME' columns
         output_path: Path for output Shapefile (without extension)
