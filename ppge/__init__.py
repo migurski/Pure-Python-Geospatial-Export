@@ -36,16 +36,8 @@ def _get_sample_rows(
     # Create two iterators from the original one
     rows1, rows2 = itertools.tee(rows)
 
-    sample_rows = []
-    row_count = 0
-
-    # Get sample rows from the first iterator
-    for row in rows1:
-        sample_rows.append(row)
-        row_count += 1
-
-        if row_count >= max_sample:
-            break
+    # Get sample rows using islice
+    sample_rows = list(itertools.islice(rows1, max_sample))
 
     return sample_rows, rows2
 
