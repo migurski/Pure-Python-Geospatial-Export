@@ -21,7 +21,7 @@ class GeometryFormat(Enum):
 
 
 def _get_sample_rows(
-    rows: Iterator[Dict[str, Any]], max_sample: int = 100
+    rows: Iterator[Dict[str, Any]], max_sample: int
 ) -> tuple[list[Dict[str, Any]], Iterator[Dict[str, Any]]]:
     """
     Get sample rows for schema detection while preserving the original iterator.
@@ -45,9 +45,9 @@ def _get_sample_rows(
 def export_to_geopackage_from_rows(
     rows: Iterator[Dict[str, Any]],
     output_path: str,
-    table_name: str = "geodata",
-    geom_key: str = "geom",
-    geom_format: GeometryFormat = GeometryFormat.WKT,
+    table_name: str,
+    geom_key: str,
+    geom_format: GeometryFormat,
 ) -> None:
     """
     Export row iterator to GeoPackage format.
@@ -60,7 +60,7 @@ def export_to_geopackage_from_rows(
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
     # Get sample rows for schema detection
-    sample_rows, full_rows = _get_sample_rows(rows)
+    sample_rows, full_rows = _get_sample_rows(rows, 100)
     if not sample_rows:
         return
 
@@ -103,8 +103,8 @@ def export_to_geopackage_from_rows(
 def export_to_shapefile_from_rows(
     rows: Iterator[Dict[str, Any]],
     output_path: str,
-    geom_key: str = "geom",
-    geom_format: GeometryFormat = GeometryFormat.WKT,
+    geom_key: str,
+    geom_format: GeometryFormat,
 ) -> None:
     """
     Export row iterator to Shapefile format.
@@ -116,7 +116,7 @@ def export_to_shapefile_from_rows(
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
     # Get sample rows for schema detection
-    sample_rows, full_rows = _get_sample_rows(rows)
+    sample_rows, full_rows = _get_sample_rows(rows, 100)
     if not sample_rows:
         return
 
@@ -156,7 +156,7 @@ def export_to_shapefile_from_rows(
 
 
 def process_bigquery_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str = "geodata"
+    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
 ) -> None:
     """
     Process BigQuery row iterator and export to GeoPackage.
@@ -172,7 +172,7 @@ def process_bigquery_rows_to_geopackage(
 
 
 def process_snowflake_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str = "geodata"
+    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
 ) -> None:
     """
     Process Snowflake row iterator and export to GeoPackage.
