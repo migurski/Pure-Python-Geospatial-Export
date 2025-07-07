@@ -22,7 +22,6 @@ def export_to_geopackage_from_rows(
     rows: Iterator[Dict[str, Any]], 
     output_path: str, 
     table_name: str = "geodata",
-    name_key: str = "name",
     geom_key: str = "geom",
     geom_format: GeometryFormat = GeometryFormat.WKT
 ) -> None:
@@ -30,37 +29,55 @@ def export_to_geopackage_from_rows(
     Export row iterator to GeoPackage format.
     
     Args:
-        rows: Iterator yielding dictionaries with name and geometry data
+        rows: Iterator yielding dictionaries with geometry and other data
         output_path: Path for the output GeoPackage file
         table_name: Name of the table within the GeoPackage
-        name_key: Key for the name field in the row dictionary
         geom_key: Key for the geometry field in the row dictionary
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
+    # Get sample row to determine fields
+    sample_rows = list(rows)
+    if not sample_rows:
+        return
+    
+    # Create fields dict excluding geometry field
+    fields = {}
+    for key, value in sample_rows[0].items():
+        if key != geom_key:
+            if isinstance(value, str):
+                fields[key] = "TEXT"
+            elif isinstance(value, (int, float)):
+                fields[key] = "REAL"
+            else:
+                fields[key] = "TEXT"  # Default to TEXT for other types
+    
     with geopackage.GeoPackage(output_path) as gpkg:
         tbl = gpkg.create(
             table_name,
-            fields={"name": "TEXT"},
+            fields=fields,
             wkid=4326,
             geometry_type="POLYGON",
             overwrite=True,
         )
 
-        for row in rows:
-            name = row[name_key]
+        for row in sample_rows:
+            # Extract geometry
             geometry = row[geom_key]
             
             # Convert GeoJSON string to dictionary if needed
             if geom_format == GeometryFormat.GEOJSON and isinstance(geometry, str):
                 geometry = json.loads(geometry)
             
-            tbl.insert({"name": name, "Shape": geometry}, geom_format=geom_format.value)
+            # Create data dict with all non-geometry fields
+            data = {k: v for k, v in row.items() if k != geom_key}
+            data["Shape"] = geometry
+            
+            tbl.insert(data, geom_format=geom_format.value)
 
 
 def export_to_shapefile_from_rows(
     rows: Iterator[Dict[str, Any]], 
     output_path: str,
-    name_key: str = "name",
     geom_key: str = "geom",
     geom_format: GeometryFormat = GeometryFormat.WKT
 ) -> None:
@@ -68,17 +85,31 @@ def export_to_shapefile_from_rows(
     Export row iterator to Shapefile format.
     
     Args:
-        rows: Iterator yielding dictionaries with name and geometry data
+        rows: Iterator yielding dictionaries with geometry and other data
         output_path: Path for the output Shapefile (without extension)
-        name_key: Key for the name field in the row dictionary
         geom_key: Key for the geometry field in the row dictionary
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
+    # Get sample row to determine fields
+    sample_rows = list(rows)
+    if not sample_rows:
+        return
+    
     with shapefile.Writer(f"{output_path}.shp", shapeType=5) as shp:
-        shp.field("name", "C")
+        # Add fields for all non-geometry columns
+        for key, value in sample_rows[0].items():
+            if key != geom_key:
+                if isinstance(value, str):
+                    shp.field(key, 'C')
+                elif isinstance(value, int):
+                    shp.field(key, 'N')
+                elif isinstance(value, float):
+                    shp.field(key, 'F')
+                else:
+                    shp.field(key, 'C')  # Default to character field
 
-        for row in rows:
-            name = row[name_key]
+        for row in sample_rows:
+            # Extract geometry
             geometry = row[geom_key]
             
             if geom_format == GeometryFormat.WKT:
@@ -86,7 +117,9 @@ def export_to_shapefile_from_rows(
             else:  # GeoJSON
                 coords = shapely.from_geojson(geometry).__geo_interface__["coordinates"]
             
-            shp.record(name=name)
+            # Create record with all non-geometry fields
+            record = {k: v for k, v in row.items() if k != geom_key}
+            shp.record(**record)
             shp.poly(coords)
 
     # Write projection file
@@ -105,11 +138,11 @@ def process_bigquery_rows_to_geopackage(
     Process BigQuery row iterator and export to GeoPackage.
     
     Args:
-        rows: Iterator yielding dictionaries with 'geom' and 'name' keys
+        rows: Iterator yielding dictionaries with 'geom' and other fields
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    export_to_geopackage_from_rows(rows, output_path, table_name, "name", "geom", GeometryFormat.WKT)
+    export_to_geopackage_from_rows(rows, output_path, table_name, "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_geopackage(
@@ -121,11 +154,11 @@ def process_snowflake_rows_to_geopackage(
     Process Snowflake row iterator and export to GeoPackage.
     
     Args:
-        rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
+        rows: Iterator yielding dictionaries with 'GEOM' and other fields
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    export_to_geopackage_from_rows(rows, output_path, table_name, "NAME", "GEOM", GeometryFormat.GEOJSON)
+    export_to_geopackage_from_rows(rows, output_path, table_name, "GEOM", GeometryFormat.GEOJSON)
 
 
 def process_bigquery_rows_to_shapefile(
@@ -136,10 +169,10 @@ def process_bigquery_rows_to_shapefile(
     Process BigQuery row iterator and export to Shapefile.
     
     Args:
-        rows: Iterator yielding dictionaries with 'geom' and 'name' keys
+        rows: Iterator yielding dictionaries with 'geom' and other fields
         output_path: Path for output Shapefile (without extension)
     """
-    export_to_shapefile_from_rows(rows, output_path, "name", "geom", GeometryFormat.WKT)
+    export_to_shapefile_from_rows(rows, output_path, "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_shapefile(
@@ -150,7 +183,7 @@ def process_snowflake_rows_to_shapefile(
     Process Snowflake row iterator and export to Shapefile.
     
     Args:
-        rows: Iterator yielding dictionaries with 'GEOM' and 'NAME' keys
+        rows: Iterator yielding dictionaries with 'GEOM' and other fields
         output_path: Path for output Shapefile (without extension)
     """
-    export_to_shapefile_from_rows(rows, output_path, "NAME", "GEOM", GeometryFormat.GEOJSON)
+    export_to_shapefile_from_rows(rows, output_path, "GEOM", GeometryFormat.GEOJSON)

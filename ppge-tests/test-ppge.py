@@ -108,7 +108,7 @@ class TestGeospatialExport(unittest.TestCase):
         
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(output_path)
-        self.validate_exported_data(gdf, "name")
+        self.validate_exported_data(gdf, "NAME")
 
     def test_bigquery_rows_to_shapefile(self):
         """Test BigQuery CSV row iterator to Shapefile export."""
@@ -170,7 +170,7 @@ class TestGeospatialExport(unittest.TestCase):
         
         # Validate the exported data using geopandas
         gdf = geopandas.read_file(shp_file)
-        self.validate_exported_data(gdf, "name")
+        self.validate_exported_data(gdf, "NAME")
 
 
 if __name__ == "__main__":
