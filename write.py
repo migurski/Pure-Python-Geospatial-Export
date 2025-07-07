@@ -3,12 +3,27 @@ import csv
 
 import geomet
 import geopackage
+import geopandas
+import pandas
 import shapefile
+import shapely
+import snowflake.snowpark.table
 
-with open("wy-co.csv") as file:
-    rows = list(csv.DictReader(file))
+df1 = pandas.read_csv("wy-co-wkt-bigquery.csv")
+print("df1:", df1, sep="\n")
 
-print(rows)
+gs1 = geopandas.GeoSeries.from_wkt(df1["geom"])
+gdf1 = geopandas.GeoDataFrame(df1[["name"]], geometry=gs1, crs="EPSG:4326")
+print("gdf1:", gdf1, sep="\n")
+
+df2 = pandas.read_csv("wy-co-geojson-snowflake.csv")
+print("df2:", df2, sep="\n")
+
+gs2 = geopandas.GeoSeries(df2["GEOM"].apply(shapely.from_geojson))
+gdf2 = geopandas.GeoDataFrame(df2[["NAME"]], geometry=gs2, crs="EPSG:4326")
+print("gdf2:", gdf2, sep="\n")
+
+exit(1)
 
 with geopackage.GeoPackage('wy-co.gpkg') as gpkg:
     tbl = gpkg.create("wyco", fields={"name": "TEXT"}, wkid=4326, geometry_type="POLYGON", overwrite=True)
