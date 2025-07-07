@@ -3,10 +3,6 @@
 Pure Python Geospatial Export (PPGE) module for converting CSV data to various geospatial formats.
 """
 
-import csv
-import os
-from typing import Dict, Any
-
 import geomet
 import geopackage
 import geopandas
@@ -15,41 +11,13 @@ import shapefile
 import shapely
 
 
-def load_bigquery_csv(csv_path: str) -> pandas.DataFrame:
-    """
-    Load BigQuery CSV data with WKT geometry into a pandas DataFrame.
-
-    Args:
-        csv_path: Path to the CSV file containing WKT geometry data
-
-    Returns:
-        pandas.DataFrame: DataFrame with geometry and name columns
-    """
-    df = pandas.read_csv(csv_path)
-    return df
-
-
-def load_snowflake_csv(csv_path: str) -> pandas.DataFrame:
-    """
-    Load Snowflake CSV data with GeoJSON geometry into a pandas DataFrame.
-
-    Args:
-        csv_path: Path to the CSV file containing GeoJSON geometry data
-
-    Returns:
-        pandas.DataFrame: DataFrame with geometry and name columns
-    """
-    df = pandas.read_csv(csv_path)
-    return df
-
-
 def create_geodataframe_from_bigquery(df: pandas.DataFrame) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from BigQuery DataFrame with WKT geometry.
-
+    
     Args:
         df: DataFrame with 'geom' and 'name' columns
-
+        
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
@@ -61,10 +29,10 @@ def create_geodataframe_from_bigquery(df: pandas.DataFrame) -> geopandas.GeoData
 def create_geodataframe_from_snowflake(df: pandas.DataFrame) -> geopandas.GeoDataFrame:
     """
     Create a GeoDataFrame from Snowflake DataFrame with GeoJSON geometry.
-
+    
     Args:
         df: DataFrame with 'GEOM' and 'NAME' columns
-
+        
     Returns:
         geopandas.GeoDataFrame: GeoDataFrame with proper CRS
     """
@@ -78,7 +46,7 @@ def export_to_geopackage(
 ) -> None:
     """
     Export GeoDataFrame to GeoPackage format.
-
+    
     Args:
         gdf: GeoDataFrame to export
         output_path: Path for the output GeoPackage file
@@ -102,7 +70,7 @@ def export_to_geopackage(
 def export_to_shapefile(gdf: geopandas.GeoDataFrame, output_path: str) -> None:
     """
     Export GeoDataFrame to Shapefile format.
-
+    
     Args:
         gdf: GeoDataFrame to export
         output_path: Path for the output Shapefile (without extension)
@@ -123,58 +91,54 @@ def export_to_shapefile(gdf: geopandas.GeoDataFrame, output_path: str) -> None:
 
 
 def process_bigquery_to_geopackage(
-    csv_path: str, output_path: str, table_name: str = "geodata"
+    df: pandas.DataFrame, output_path: str, table_name: str = "geodata"
 ) -> None:
     """
-    Process BigQuery CSV data and export to GeoPackage.
-
+    Process BigQuery DataFrame and export to GeoPackage.
+    
     Args:
-        csv_path: Path to BigQuery CSV file
+        df: BigQuery DataFrame with 'geom' and 'name' columns
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    df = load_bigquery_csv(csv_path)
     gdf = create_geodataframe_from_bigquery(df)
     export_to_geopackage(gdf, output_path, table_name)
 
 
 def process_snowflake_to_geopackage(
-    csv_path: str, output_path: str, table_name: str = "geodata"
+    df: pandas.DataFrame, output_path: str, table_name: str = "geodata"
 ) -> None:
     """
-    Process Snowflake CSV data and export to GeoPackage.
-
+    Process Snowflake DataFrame and export to GeoPackage.
+    
     Args:
-        csv_path: Path to Snowflake CSV file
+        df: Snowflake DataFrame with 'GEOM' and 'NAME' columns
         output_path: Path for output GeoPackage
         table_name: Name of table in GeoPackage
     """
-    df = load_snowflake_csv(csv_path)
     gdf = create_geodataframe_from_snowflake(df)
     export_to_geopackage(gdf, output_path, table_name)
 
 
-def process_bigquery_to_shapefile(csv_path: str, output_path: str) -> None:
+def process_bigquery_to_shapefile(df: pandas.DataFrame, output_path: str) -> None:
     """
-    Process BigQuery CSV data and export to Shapefile.
-
+    Process BigQuery DataFrame and export to Shapefile.
+    
     Args:
-        csv_path: Path to BigQuery CSV file
+        df: BigQuery DataFrame with 'geom' and 'name' columns
         output_path: Path for output Shapefile (without extension)
     """
-    df = load_bigquery_csv(csv_path)
     gdf = create_geodataframe_from_bigquery(df)
     export_to_shapefile(gdf, output_path)
 
 
-def process_snowflake_to_shapefile(csv_path: str, output_path: str) -> None:
+def process_snowflake_to_shapefile(df: pandas.DataFrame, output_path: str) -> None:
     """
-    Process Snowflake CSV data and export to Shapefile.
-
+    Process Snowflake DataFrame and export to Shapefile.
+    
     Args:
-        csv_path: Path to Snowflake CSV file
+        df: Snowflake DataFrame with 'GEOM' and 'NAME' columns
         output_path: Path for output Shapefile (without extension)
     """
-    df = load_snowflake_csv(csv_path)
     gdf = create_geodataframe_from_snowflake(df)
     export_to_shapefile(gdf, output_path)
