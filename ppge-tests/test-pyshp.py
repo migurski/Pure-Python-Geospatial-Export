@@ -2,7 +2,6 @@
 This module tests the functionality of shapefile.py.
 """
 
-import dataclasses
 import datetime
 import json
 import os.path
