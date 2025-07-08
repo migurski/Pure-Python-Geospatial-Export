@@ -442,10 +442,25 @@ class TempDir:
         return py.path.local(os.path.join(self.tempdir, path))
 
 def wrap_test_with_tempdir(test_method):
-    def _wrapped_method(test_case):
+    def _wrapped_method(test_case, *args):
         with tempfile.TemporaryDirectory() as tempdir:
-            return test_method(test_case, TempDir(tempdir))
-    
+            return test_method(test_case, TempDir(tempdir), *args)
+    return _wrapped_method
+
+def wrap_test_shape_types(test_method):
+    shape_types = [
+        k for k in shapefile.SHAPETYPE_LOOKUP.keys() if k != 31
+    ]  # exclude multipatch
+
+    def _wrapped_method(test_case):
+        for shape_type in shape_types:
+            return test_method(test_case, shape_type)
+    return _wrapped_method
+
+def wrap_with_geo_interface_tests(test_method):
+    def _wrapped_method(test_case):
+        for args in geo_interface_tests:
+            test_method(test_case, *args)
     return _wrapped_method
 
 class TestPySHP(unittest.TestCase):
@@ -471,7 +486,7 @@ class TestPySHP(unittest.TestCase):
             getattr(shape, "__geo_interface__")
 
 
-    @pytest.mark.parametrize("typ,points,parts,expected", geo_interface_tests)
+    @wrap_with_geo_interface_tests
     def test_expected_shape_geo_interface(self, typ, points, parts, expected):
         """
         Assert that calling __geo_interface__
@@ -918,7 +933,7 @@ class TestPySHP(unittest.TestCase):
         of fields when specified.
         """
         fields = ["AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"]
-        test_record_attributes(fields=fields)
+        self.test_record_attributes(fields=fields)
 
 
     def test_record_subfields_unordered(self):
@@ -928,7 +943,7 @@ class TestPySHP(unittest.TestCase):
         retrieved in the order of the shapefile fields.
         """
         fields = sorted(["AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"])
-        test_record_attributes(fields=fields)
+        self.test_record_attributes(fields=fields)
 
 
     def test_record_subfields_delflag_notvalid(self):
@@ -937,7 +952,7 @@ class TestPySHP(unittest.TestCase):
         """
         fields = ["DeletionFlag", "AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"]
         with pytest.raises(ValueError):
-            test_record_attributes(fields=fields)
+            self.test_record_attributes(fields=fields)
 
 
     def test_record_subfields_duplicates(self):
@@ -946,7 +961,7 @@ class TestPySHP(unittest.TestCase):
         of fields when specified, handling duplicate input fields.
         """
         fields = ["AREA", "AREA", "AREA", "MALES", "MALES", "MOBILEHOME"]
-        test_record_attributes(fields=fields)
+        self.test_record_attributes(fields=fields)
         # check that only 3 values
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             rec = sf.record(0, fields=fields)
@@ -959,7 +974,7 @@ class TestPySHP(unittest.TestCase):
         an empty list.
         """
         fields = []
-        test_record_attributes(fields=fields)
+        self.test_record_attributes(fields=fields)
         # check that only 0 values
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             rec = sf.record(0, fields=fields)
@@ -1861,12 +1876,8 @@ class TestPySHP(unittest.TestCase):
             assert json.dumps(r.__geo_interface__)
 
 
-    shape_types = [
-        k for k in shapefile.SHAPETYPE_LOOKUP.keys() if k != 31
-    ]  # exclude multipatch
-
-
-    @pytest.mark.parametrize("shape_type", shape_types)
+    @wrap_test_shape_types
+    @wrap_test_with_tempdir
     def test_write_empty_shapefile(self, tmpdir, shape_type):
         """
         Assert that can write an empty shapefile, for all different shape types.
