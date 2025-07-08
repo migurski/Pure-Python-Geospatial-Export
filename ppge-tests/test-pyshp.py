@@ -17,9 +17,10 @@ except ImportError:
 
 # third party imports
 import pytest
+import py.path
 
 # our imports
-import shapefile
+import ppge.pyshp as shapefile
 
 # define various test shape tuples of (type, points, parts indexes, and expected geo interface output)
 geo_interface_tests = [
@@ -434,15 +435,11 @@ geo_interface_tests = [
     ),
 ]
 
-@dataclasses.dataclass
-class Path:
-    strpath: str
-
 class TempDir:
     def __init__(self, tempdir):
         self.tempdir = tempdir
     def join(self, path):
-        return Path(os.path.join(self.tempdir, path))
+        return py.path.local(os.path.join(self.tempdir, path))
 
 def wrap_test_with_tempdir(test_method):
     def _wrapped_method(test_case):
@@ -452,6 +449,16 @@ def wrap_test_with_tempdir(test_method):
     return _wrapped_method
 
 class TestPySHP(unittest.TestCase):
+
+    starting_directory: str
+
+    def setUp(self):
+        self.starting_directory = os.getcwd()
+        os.chdir(os.path.dirname(__file__))
+    
+    def tearDown(self):
+        os.chdir(self.starting_directory)
+        del self.starting_directory
 
     def test_empty_shape_geo_interface(self):
         """

@@ -13,5 +13,6 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "geopandas==1.0.1",
+    "py==1.11.0",
     "ruff==0.12.2",
 ]
