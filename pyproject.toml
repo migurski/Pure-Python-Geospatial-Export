@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "Pure-Python-Geospatial-Export"
 version = "0.1.0"
@@ -11,5 +15,6 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "geopandas==1.0.1",
+    "pyogrio==0.11.0",
     "ruff==0.12.2",
 ]
