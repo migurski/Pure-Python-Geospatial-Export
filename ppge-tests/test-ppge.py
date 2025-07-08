@@ -88,7 +88,7 @@ class TestGeospatialExport(unittest.TestCase):
 
         # Check that it's a FeatureCollection
         self.assertEqual(geojson_data["type"], "FeatureCollection")
-        
+
         # Check that we have exactly 2 features
         self.assertEqual(len(geojson_data["features"]), 2)
 
@@ -174,6 +174,7 @@ class TestGeospatialExport(unittest.TestCase):
 
         # Validate the exported data using geopandas
         import geopandas
+
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "name")
 
@@ -206,6 +207,7 @@ class TestGeospatialExport(unittest.TestCase):
 
         # Validate the exported data using geopandas
         import geopandas
+
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "NAME")
 
