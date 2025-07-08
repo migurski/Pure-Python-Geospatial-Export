@@ -7,7 +7,6 @@ import os
 import tempfile
 import unittest
 import csv
-import geopandas
 import shapely
 import json
 import ppge
@@ -89,7 +88,7 @@ class TestGeospatialExport(unittest.TestCase):
 
         # Check that it's a FeatureCollection
         self.assertEqual(geojson_data["type"], "FeatureCollection")
-
+        
         # Check that we have exactly 2 features
         self.assertEqual(len(geojson_data["features"]), 2)
 
@@ -146,42 +145,6 @@ class TestGeospatialExport(unittest.TestCase):
         colorado_point = shapely.Point(-105.8, 39.1)
         self.assertTrue(colorado_geom.contains(colorado_point))
 
-    def test_bigquery_rows_to_geopackage(self):
-        """Test BigQuery CSV row iterator to GeoPackage export."""
-        rows = list(csv_row_iterator(self.bigquery_csv))
-        self.assertEqual(len(rows), 2)
-        self.assertIn("geom", rows[0])
-        self.assertIn("name", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_bigquery_rows.gpkg")
-        ppge.process_bigquery_rows_to_geopackage(rows, output_path, "test_table")
-
-        # Verify file was created
-        self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 0)
-
-        # Validate the exported data using geopandas
-        gdf = geopandas.read_file(output_path)
-        self.validate_exported_data(gdf, "name")
-
-    def test_snowflake_rows_to_geopackage(self):
-        """Test Snowflake CSV row iterator to GeoPackage export."""
-        rows = list(csv_row_iterator(self.snowflake_csv))
-        self.assertEqual(len(rows), 2)
-        self.assertIn("GEOM", rows[0])
-        self.assertIn("NAME", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_snowflake_rows.gpkg")
-        ppge.process_snowflake_rows_to_geopackage(rows, output_path, "test_table")
-
-        # Verify file was created
-        self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 0)
-
-        # Validate the exported data using geopandas
-        gdf = geopandas.read_file(output_path)
-        self.validate_exported_data(gdf, "NAME")
-
     def test_bigquery_rows_to_shapefile(self):
         """Test BigQuery CSV row iterator to Shapefile export."""
         rows = list(csv_row_iterator(self.bigquery_csv))
@@ -210,6 +173,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(os.path.getsize(prj_file), 0)
 
         # Validate the exported data using geopandas
+        import geopandas
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "name")
 
@@ -241,6 +205,7 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(os.path.getsize(prj_file), 0)
 
         # Validate the exported data using geopandas
+        import geopandas
         gdf = geopandas.read_file(shp_file)
         self.validate_exported_data(gdf, "NAME")
 

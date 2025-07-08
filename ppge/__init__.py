@@ -3,8 +3,6 @@
 Pure Python Geospatial Export (PPGE) module for converting CSV data to various geospatial formats.
 """
 
-import geomet
-import geopackage
 import shapefile
 import shapely
 import json
@@ -65,64 +63,6 @@ def _get_geometry_column_name(existing_columns: set) -> str:
         return f"geometry_{counter}"
 
 
-def export_to_geopackage_from_rows(
-    rows: Iterator[Dict[str, Any]],
-    output_path: str,
-    table_name: str,
-    geom_key: str,
-    geom_format: GeometryFormat,
-) -> None:
-    """
-    Export row iterator to GeoPackage format.
-
-    Args:
-        rows: Iterator yielding dictionaries with geometry and other data
-        output_path: Path for the output GeoPackage file
-        table_name: Name of the table within the GeoPackage
-        geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data (WKT or GeoJSON)
-    """
-    # Get sample rows for schema detection
-    sample_rows, full_rows = _get_sample_rows(rows, 100)
-    if not sample_rows:
-        return
-
-    # Create fields dict excluding geometry field
-    fields = {}
-    for key, value in sample_rows[0].items():
-        if key != geom_key:
-            if isinstance(value, str):
-                fields[key] = "TEXT"
-            elif isinstance(value, (int, float)):
-                fields[key] = "REAL"
-            else:
-                fields[key] = "TEXT"  # Default to TEXT for other types
-
-    with geopackage.GeoPackage(output_path) as gpkg:
-        tbl = gpkg.create(
-            table_name,
-            fields=fields,
-            wkid=4326,
-            geometry_type="POLYGON",
-            overwrite=True,
-        )
-
-        # Export all rows
-        for row in full_rows:
-            # Extract geometry
-            geometry = row[geom_key]
-
-            # Convert GeoJSON string to dictionary if needed
-            if geom_format == GeometryFormat.GEOJSON and isinstance(geometry, str):
-                geometry = json.loads(geometry)
-
-            # Create data dict with all non-geometry fields
-            data = {k: v for k, v in row.items() if k != geom_key}
-            data["Shape"] = geometry
-
-            tbl.insert(data, geom_format=geom_format.value)
-
-
 def export_to_shapefile_from_rows(
     rows: Iterator[Dict[str, Any]],
     output_path: str,
@@ -162,7 +102,9 @@ def export_to_shapefile_from_rows(
             geometry = row[geom_key]
 
             if geom_format == GeometryFormat.WKT:
-                coords = geomet.wkt.loads(geometry)["coordinates"]
+                # Parse WKT using shapely
+                shapely_geom = shapely.from_wkt(geometry)
+                coords = shapely_geom.__geo_interface__["coordinates"]
             else:  # GeoJSON
                 coords = shapely.from_geojson(geometry).__geo_interface__["coordinates"]
 
@@ -291,38 +233,6 @@ def export_to_csv_from_rows(
             csv_row[geometry_column] = geometry
 
             writer.writerow(csv_row)
-
-
-def process_bigquery_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
-) -> None:
-    """
-    Process BigQuery row iterator and export to GeoPackage.
-
-    Args:
-        rows: Iterator yielding dictionaries with 'geom' and other fields
-        output_path: Path for output GeoPackage
-        table_name: Name of table in GeoPackage
-    """
-    export_to_geopackage_from_rows(
-        rows, output_path, table_name, "geom", GeometryFormat.WKT
-    )
-
-
-def process_snowflake_rows_to_geopackage(
-    rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
-) -> None:
-    """
-    Process Snowflake row iterator and export to GeoPackage.
-
-    Args:
-        rows: Iterator yielding dictionaries with 'GEOM' and other fields
-        output_path: Path for output GeoPackage
-        table_name: Name of table in GeoPackage
-    """
-    export_to_geopackage_from_rows(
-        rows, output_path, table_name, "GEOM", GeometryFormat.GEOJSON
-    )
 
 
 def process_bigquery_rows_to_shapefile(
