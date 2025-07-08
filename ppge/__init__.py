@@ -9,6 +9,7 @@ import shapefile
 import shapely
 import json
 import itertools
+import csv
 from typing import Iterator, Dict, Any
 from enum import Enum
 
@@ -40,6 +41,28 @@ def _get_sample_rows(
     sample_rows = list(itertools.islice(rows1, max_sample))
 
     return sample_rows, rows2
+
+
+def _get_geometry_column_name(existing_columns: set) -> str:
+    """
+    Determine the name for the geometry column, avoiding conflicts.
+
+    Args:
+        existing_columns: Set of existing column names
+
+    Returns:
+        str: Name for the geometry column
+    """
+    if "geometry" not in existing_columns:
+        return "geometry"
+    elif "WKT" not in existing_columns:
+        return "WKT"
+    else:
+        # Find a unique name by appending numbers
+        counter = 1
+        while f"geometry_{counter}" in existing_columns:
+            counter += 1
+        return f"geometry_{counter}"
 
 
 def export_to_geopackage_from_rows(
@@ -209,6 +232,67 @@ def export_to_geojson_from_rows(
         json.dump(geojson, f, indent=2)
 
 
+def export_to_csv_from_rows(
+    rows: Iterator[Dict[str, Any]],
+    output_path: str,
+    geom_key: str,
+    geom_format: GeometryFormat,
+) -> None:
+    """
+    Export row iterator to CSV format with WKT geometry column.
+
+    Args:
+        rows: Iterator yielding dictionaries with geometry and other data
+        output_path: Path for the output CSV file
+        geom_key: Key for the geometry field in the row dictionary
+        geom_format: Format of geometry data (WKT or GeoJSON)
+    """
+    # Get sample rows for schema detection
+    sample_rows, full_rows = _get_sample_rows(rows, 100)
+    if not sample_rows:
+        return
+
+    # Determine geometry column name
+    existing_columns = set(sample_rows[0].keys())
+    geometry_column = _get_geometry_column_name(existing_columns)
+
+    # Prepare fieldnames for CSV writer
+    fieldnames = []
+    for key in sample_rows[0].keys():
+        if key != geom_key:
+            fieldnames.append(key)
+    fieldnames.append(geometry_column)
+
+    # Write CSV file
+    with open(output_path, "w", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # Export all rows
+        for row in full_rows:
+            # Extract geometry
+            geometry = row[geom_key]
+
+            # Convert GeoJSON to WKT if needed
+            if geom_format == GeometryFormat.GEOJSON:
+                if isinstance(geometry, str):
+                    geometry = json.loads(geometry)
+                # Convert GeoJSON to WKT using shapely
+                shapely_geom = shapely.from_geojson(json.dumps(geometry))
+                geometry = shapely_geom.wkt
+            else:  # WKT
+                if not isinstance(geometry, str):
+                    # Convert dict to WKT if needed
+                    shapely_geom = shapely.from_geojson(json.dumps(geometry))
+                    geometry = shapely_geom.wkt
+
+            # Create row dict with all non-geometry fields plus geometry
+            csv_row = {k: v for k, v in row.items() if k != geom_key}
+            csv_row[geometry_column] = geometry
+
+            writer.writerow(csv_row)
+
+
 def process_bigquery_rows_to_geopackage(
     rows: Iterator[Dict[str, Any]], output_path: str, table_name: str
 ) -> None:
@@ -291,3 +375,29 @@ def process_snowflake_rows_to_geojson(
         output_path: Path for output GeoJSON file
     """
     export_to_geojson_from_rows(rows, output_path, "GEOM", GeometryFormat.GEOJSON)
+
+
+def process_bigquery_rows_to_csv(
+    rows: Iterator[Dict[str, Any]], output_path: str
+) -> None:
+    """
+    Process BigQuery row iterator and export to CSV with WKT geometry.
+
+    Args:
+        rows: Iterator yielding dictionaries with 'geom' and other fields
+        output_path: Path for output CSV file
+    """
+    export_to_csv_from_rows(rows, output_path, "geom", GeometryFormat.WKT)
+
+
+def process_snowflake_rows_to_csv(
+    rows: Iterator[Dict[str, Any]], output_path: str
+) -> None:
+    """
+    Process Snowflake row iterator and export to CSV with WKT geometry.
+
+    Args:
+        rows: Iterator yielding dictionaries with 'GEOM' and other fields
+        output_path: Path for output CSV file
+    """
+    export_to_csv_from_rows(rows, output_path, "GEOM", GeometryFormat.GEOJSON)

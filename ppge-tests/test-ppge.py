@@ -105,6 +105,47 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(colorado_feature["type"], "Feature")
         self.assertEqual(colorado_feature["geometry"]["type"], "Polygon")
 
+    def validate_csv_data(
+        self, csv_path, name_column="name", geometry_column="geometry"
+    ):
+        """
+        Validate that the exported CSV data contains the expected states and WKT geometry.
+
+        Args:
+            csv_path: Path to the CSV file
+            name_column: Name of the column containing state names
+            geometry_column: Name of the column containing WKT geometry
+        """
+        # Read CSV file
+        with open(csv_path, "r", newline="") as csvfile:
+            reader = csv.DictReader(csvfile)
+            rows = list(reader)
+
+        # Check that we have exactly 2 rows
+        self.assertEqual(len(rows), 2)
+
+        # Check first row (Wyoming)
+        wyoming_row = rows[0]
+        self.assertEqual(wyoming_row[name_column], "Wyoming")
+        self.assertIn(geometry_column, wyoming_row)
+        self.assertTrue(wyoming_row[geometry_column].startswith("POLYGON"))
+
+        # Check that Wyoming polygon contains the specified point
+        wyoming_geom = shapely.from_wkt(wyoming_row[geometry_column])
+        wyoming_point = shapely.Point(-107.5, 43.0)
+        self.assertTrue(wyoming_geom.contains(wyoming_point))
+
+        # Check second row (Colorado)
+        colorado_row = rows[1]
+        self.assertEqual(colorado_row[name_column], "Colorado")
+        self.assertIn(geometry_column, colorado_row)
+        self.assertTrue(colorado_row[geometry_column].startswith("POLYGON"))
+
+        # Check that Colorado polygon contains the specified point
+        colorado_geom = shapely.from_wkt(colorado_row[geometry_column])
+        colorado_point = shapely.Point(-105.8, 39.1)
+        self.assertTrue(colorado_geom.contains(colorado_point))
+
     def test_bigquery_rows_to_geopackage(self):
         """Test BigQuery CSV row iterator to GeoPackage export."""
         rows = list(csv_row_iterator(self.bigquery_csv))
@@ -236,6 +277,40 @@ class TestGeospatialExport(unittest.TestCase):
 
         # Validate the exported data using GeoJSON validation
         self.validate_geojson_data(output_path, "NAME")
+
+    def test_bigquery_rows_to_csv(self):
+        """Test BigQuery CSV row iterator to CSV export with WKT geometry."""
+        rows = list(csv_row_iterator(self.bigquery_csv))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("geom", rows[0])
+        self.assertIn("name", rows[0])
+
+        output_path = os.path.join(self.temp_dir, "test_bigquery_rows.csv")
+        ppge.process_bigquery_rows_to_csv(rows, output_path)
+
+        # Verify file was created
+        self.assertTrue(os.path.exists(output_path))
+        self.assertGreater(os.path.getsize(output_path), 0)
+
+        # Validate the exported data using CSV validation
+        self.validate_csv_data(output_path, "name", "geometry")
+
+    def test_snowflake_rows_to_csv(self):
+        """Test Snowflake CSV row iterator to CSV export with WKT geometry."""
+        rows = list(csv_row_iterator(self.snowflake_csv))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("GEOM", rows[0])
+        self.assertIn("NAME", rows[0])
+
+        output_path = os.path.join(self.temp_dir, "test_snowflake_rows.csv")
+        ppge.process_snowflake_rows_to_csv(rows, output_path)
+
+        # Verify file was created
+        self.assertTrue(os.path.exists(output_path))
+        self.assertGreater(os.path.getsize(output_path), 0)
+
+        # Validate the exported data using CSV validation
+        self.validate_csv_data(output_path, "NAME", "geometry")
 
 
 if __name__ == "__main__":
