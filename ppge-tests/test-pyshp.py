@@ -531,14 +531,14 @@ class TestPySHP(unittest.TestCase):
         Assert that Reader can open shapefiles from a url.
         """
         # test with extension
-        url = "https://github.com/nvkelso/natural-earth-vector/blob/master/110m_cultural/ne_110m_admin_0_tiny_countries.shp?raw=true"
+        url = "https://github.com/nvkelso/natural-earth-vector/raw/refs/heads/master/110m_cultural/ne_110m_admin_0_tiny_countries.shp"
         with shapefile.Reader(url) as sf:
             for __recShape in sf.iterShapeRecords():
                 pass
         assert sf.shp.closed is sf.shx.closed is sf.dbf.closed is True
 
         # test without extension
-        url = "https://github.com/nvkelso/natural-earth-vector/blob/master/110m_cultural/ne_110m_admin_0_tiny_countries?raw=true"
+        url = "https://github.com/nvkelso/natural-earth-vector/raw/refs/heads/master/110m_cultural/ne_110m_admin_0_tiny_countries"
         with shapefile.Reader(url) as sf:
             for __recShape in sf.iterShapeRecords():
                 pass
