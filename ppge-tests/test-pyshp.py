@@ -434,17 +434,22 @@ geo_interface_tests = [
     ),
 ]
 
+
 class TempDir:
     def __init__(self, tempdir):
         self.tempdir = tempdir
+
     def join(self, path):
         return py.path.local(os.path.join(self.tempdir, path))
+
 
 def wrap_test_with_tempdir(test_method):
     def _wrapped_method(test_case, *args):
         with tempfile.TemporaryDirectory() as tempdir:
             return test_method(test_case, TempDir(tempdir), *args)
+
     return _wrapped_method
+
 
 def wrap_test_shape_types(test_method):
     shape_types = [
@@ -454,22 +459,25 @@ def wrap_test_shape_types(test_method):
     def _wrapped_method(test_case):
         for shape_type in shape_types:
             return test_method(test_case, shape_type)
+
     return _wrapped_method
+
 
 def wrap_with_geo_interface_tests(test_method):
     def _wrapped_method(test_case):
         for args in geo_interface_tests:
             test_method(test_case, *args)
+
     return _wrapped_method
 
-class TestPySHP(unittest.TestCase):
 
+class TestPySHP(unittest.TestCase):
     starting_directory: str
 
     def setUp(self):
         self.starting_directory = os.getcwd()
         os.chdir(os.path.dirname(__file__))
-    
+
     def tearDown(self):
         os.chdir(self.starting_directory)
         del self.starting_directory
@@ -484,7 +492,6 @@ class TestPySHP(unittest.TestCase):
         with pytest.raises(Exception):
             getattr(shape, "__geo_interface__")
 
-
     @wrap_with_geo_interface_tests
     def test_expected_shape_geo_interface(self, typ, points, parts, expected):
         """
@@ -495,7 +502,6 @@ class TestPySHP(unittest.TestCase):
         geoj = shape.__geo_interface__
         assert geoj == expected
 
-
     def test_reader_geo_interface(self):
         with shapefile.Reader("shapefiles/blockgroups") as r:
             geoj = r.__geo_interface__
@@ -503,13 +509,11 @@ class TestPySHP(unittest.TestCase):
             assert "bbox" in geoj
             assert json.dumps(geoj)
 
-
     def test_shapes_geo_interface(self):
         with shapefile.Reader("shapefiles/blockgroups") as r:
             geoj = r.shapes().__geo_interface__
             assert geoj["type"] == "GeometryCollection"
             assert json.dumps(geoj)
-
 
     def test_shaperecords_geo_interface(self):
         with shapefile.Reader("shapefiles/blockgroups") as r:
@@ -517,12 +521,10 @@ class TestPySHP(unittest.TestCase):
             assert geoj["type"] == "FeatureCollection"
             assert json.dumps(geoj)
 
-
     def test_shaperecord_geo_interface(self):
         with shapefile.Reader("shapefiles/blockgroups") as r:
             for shaperec in r:
                 assert json.dumps(shaperec.__geo_interface__)
-
 
     @pytest.mark.network
     def test_reader_url(self):
@@ -557,7 +559,6 @@ class TestPySHP(unittest.TestCase):
                 pass
             assert len(sf) > 0
         assert sf.shp.closed is sf.shx.closed is sf.dbf.closed is True
-
 
     def test_reader_zip(self):
         """
@@ -598,7 +599,6 @@ class TestPySHP(unittest.TestCase):
             with shapefile.Reader("shapefiles/empty_zipfile.zip") as sf:
                 pass
 
-
     def test_reader_close_path(self):
         """
         Assert that manually calling Reader.close()
@@ -617,7 +617,6 @@ class TestPySHP(unittest.TestCase):
         # check that can read again
         sf = shapefile.Reader("shapefiles/blockgroups.shp")
         sf.close()
-
 
     def test_reader_close_filelike(self):
         """
@@ -641,7 +640,6 @@ class TestPySHP(unittest.TestCase):
         sf = shapefile.Reader(shp=shp, shx=shx, dbf=dbf)
         sf.close()
 
-
     def test_reader_context_path(self):
         """
         Assert that using the context manager
@@ -660,7 +658,6 @@ class TestPySHP(unittest.TestCase):
         # check that can read again
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             pass
-
 
     def test_reader_context_filelike(self):
         """
@@ -684,7 +681,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(shp=shp, shx=shx, dbf=dbf) as sf:
             pass
 
-
     def test_reader_shapefile_type(self):
         """
         Assert that the type of the shapefile
@@ -695,7 +691,6 @@ class TestPySHP(unittest.TestCase):
             assert sf.shapeType == shapefile.POLYGON
             assert sf.shapeTypeName == "POLYGON"
 
-
     def test_reader_shapefile_length(self):
         """
         Assert that the length the reader gives us
@@ -705,14 +700,12 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             assert len(sf) == len(sf.shapes())
 
-
     def test_shape_metadata(self):
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             shape = sf.shape(0)
             assert shape.shapeType == 5  # Polygon
             assert shape.shapeType == shapefile.POLYGON
             assert sf.shapeTypeName == "POLYGON"
-
 
     def test_reader_fields(self):
         """
@@ -731,7 +724,6 @@ class TestPySHP(unittest.TestCase):
             assert isinstance(field[2], int)  # field length
             assert isinstance(field[3], int)  # decimal length
 
-
     def test_reader_shapefile_extension_ignored(self):
         """
         Assert that the filename's extension is
@@ -746,7 +738,6 @@ class TestPySHP(unittest.TestCase):
         # assert test.abc does not exist
         assert not os.path.exists(filename)
 
-
     def test_reader_pathlike(self):
         """
         Assert that path-like objects can be read.
@@ -754,7 +745,6 @@ class TestPySHP(unittest.TestCase):
         base = Path("shapefiles")
         with shapefile.Reader(base / "blockgroups") as sf:
             assert len(sf) == 663
-
 
     def test_reader_dbf_only(self):
         """
@@ -766,7 +756,6 @@ class TestPySHP(unittest.TestCase):
             assert len(sf) == 663
             record = sf.record(3)
             assert record[1:3] == ["060750601001", 4715]
-
 
     def test_reader_shp_shx_only(self):
         """
@@ -780,7 +769,6 @@ class TestPySHP(unittest.TestCase):
             assert len(sf) == 663
             shape = sf.shape(3)
             assert len(shape.points) == 173
-
 
     def test_reader_shp_dbf_only(self):
         """
@@ -797,7 +785,6 @@ class TestPySHP(unittest.TestCase):
             record = sf.record(3)
             assert record[1:3] == ["060750601001", 4715]
 
-
     def test_reader_shp_only(self):
         """
         Assert that specifying just the
@@ -809,7 +796,6 @@ class TestPySHP(unittest.TestCase):
             shape = sf.shape(3)
             assert len(shape.points) == 173
 
-
     def test_reader_filelike_dbf_only(self):
         """
         Assert that specifying just the
@@ -820,7 +806,6 @@ class TestPySHP(unittest.TestCase):
             assert len(sf) == 663
             record = sf.record(3)
             assert record[1:3] == ["060750601001", 4715]
-
 
     def test_reader_filelike_shp_shx_only(self):
         """
@@ -835,7 +820,6 @@ class TestPySHP(unittest.TestCase):
             assert len(sf) == 663
             shape = sf.shape(3)
             assert len(shape.points) == 173
-
 
     def test_reader_filelike_shp_dbf_only(self):
         """
@@ -853,7 +837,6 @@ class TestPySHP(unittest.TestCase):
             record = sf.record(3)
             assert record[1:3] == ["060750601001", 4715]
 
-
     def test_reader_filelike_shp_only(self):
         """
         Assert that specifying just the
@@ -864,7 +847,6 @@ class TestPySHP(unittest.TestCase):
             assert len(sf) == 663
             shape = sf.shape(3)
             assert len(shape.points) == 173
-
 
     def test_reader_shapefile_delayed_load(self):
         """
@@ -879,7 +861,6 @@ class TestPySHP(unittest.TestCase):
             sf.load("shapefiles/blockgroups")
             assert len(sf) == 663
 
-
     def test_records_match_shapes(self):
         """
         Assert that the number of records matches
@@ -889,7 +870,6 @@ class TestPySHP(unittest.TestCase):
             records = sf.records()
             shapes = sf.shapes()
             assert len(records) == len(shapes)
-
 
     def test_record_attributes(self, fields=None):
         """
@@ -921,10 +901,11 @@ class TestPySHP(unittest.TestCase):
                     field_name = field[0]
                     if field_name in fields:
                         assert (
-                            record[i] == record[field_name] == getattr(record, field_name)
+                            record[i]
+                            == record[field_name]
+                            == getattr(record, field_name)
                         )
                         i += 1
-
 
     def test_record_subfields(self):
         """
@@ -933,7 +914,6 @@ class TestPySHP(unittest.TestCase):
         """
         fields = ["AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"]
         self.test_record_attributes(fields=fields)
-
 
     def test_record_subfields_unordered(self):
         """
@@ -944,7 +924,6 @@ class TestPySHP(unittest.TestCase):
         fields = sorted(["AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"])
         self.test_record_attributes(fields=fields)
 
-
     def test_record_subfields_delflag_notvalid(self):
         """
         Assert that reader does not consider DeletionFlag as a valid field name.
@@ -952,7 +931,6 @@ class TestPySHP(unittest.TestCase):
         fields = ["DeletionFlag", "AREA", "POP1990", "MALES", "FEMALES", "MOBILEHOME"]
         with pytest.raises(ValueError):
             self.test_record_attributes(fields=fields)
-
 
     def test_record_subfields_duplicates(self):
         """
@@ -966,7 +944,6 @@ class TestPySHP(unittest.TestCase):
             rec = sf.record(0, fields=fields)
             assert len(rec) == len(set(fields))
 
-
     def test_record_subfields_empty(self):
         """
         Assert that reader does not retrieve any fields when given
@@ -978,7 +955,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             rec = sf.record(0, fields=fields)
             assert len(rec) == 0
-
 
     def test_record_as_dict(self):
         """
@@ -992,7 +968,6 @@ class TestPySHP(unittest.TestCase):
             assert len(record) == len(as_dict)
             for key, value in as_dict.items():
                 assert record[key] == value
-
 
     def test_record_oid(self):
         """
@@ -1012,7 +987,6 @@ class TestPySHP(unittest.TestCase):
 
             for i, shaperec in enumerate(sf.iterShapeRecords()):
                 assert shaperec.record.oid == i
-
 
     def test_iterRecords_start_stop(self):
         """
@@ -1046,7 +1020,6 @@ class TestPySHP(unittest.TestCase):
                         for record in sf.iterRecords(start=i, stop=stop_arg):
                             assert record == sf.record(record.oid)
 
-
     def test_shape_oid(self):
         """
         Assert that the shape's oid attribute returns
@@ -1065,7 +1038,6 @@ class TestPySHP(unittest.TestCase):
 
             for i, shaperec in enumerate(sf.iterShapeRecords()):
                 assert shaperec.shape.oid == i
-
 
     def test_shape_oid_no_shx(self):
         """
@@ -1097,9 +1069,9 @@ class TestPySHP(unittest.TestCase):
                     assert shaperec.shape.oid == i
                     shape_expected = sf_expected.shape(i)
                     assert (
-                        shaperec.shape.__geo_interface__ == shape_expected.__geo_interface__
+                        shaperec.shape.__geo_interface__
+                        == shape_expected.__geo_interface__
                     )
-
 
     def test_reader_offsets(self):
         """
@@ -1113,7 +1085,6 @@ class TestPySHP(unittest.TestCase):
             # reading a shape index should trigger reading offsets from shx file
             sf.shape(3)
             assert len(sf._offsets) == len(sf.shapes())
-
 
     def test_reader_offsets_no_shx(self):
         """
@@ -1134,7 +1105,6 @@ class TestPySHP(unittest.TestCase):
             shapes = sf.shapes()
             assert len(sf._offsets) == len(shapes)
 
-
     def test_reader_numshapes(self):
         """
         Assert that reader reads the numShapes attribute from the
@@ -1146,7 +1116,6 @@ class TestPySHP(unittest.TestCase):
             assert sf.numShapes is not None
             # numShapes should equal the number of shapes
             assert sf.numShapes == len(sf.shapes())
-
 
     def test_reader_numshapes_no_shx(self):
         """
@@ -1164,7 +1133,6 @@ class TestPySHP(unittest.TestCase):
             shapes = sf.shapes()
             assert sf.numShapes == len(shapes)
 
-
     def test_reader_len(self):
         """
         Assert that calling len() on reader is equal to length of
@@ -1174,7 +1142,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(basename) as sf:
             assert len(sf) == len(sf.records()) == len(sf.shapes())
 
-
     def test_reader_len_not_loaded(self):
         """
         Assert that calling len() on reader that hasn't loaded a shapefile
@@ -1182,7 +1149,6 @@ class TestPySHP(unittest.TestCase):
         """
         with shapefile.Reader() as sf:
             assert len(sf) == 0
-
 
     def test_reader_len_dbf_only(self):
         """
@@ -1193,7 +1159,6 @@ class TestPySHP(unittest.TestCase):
         dbf = open(basename + ".dbf", "rb")
         with shapefile.Reader(dbf=dbf) as sf:
             assert len(sf) == len(sf.records())
-
 
     def test_reader_len_no_dbf(self):
         """
@@ -1206,7 +1171,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(shp=shp, shx=shx) as sf:
             assert len(sf) == len(sf.shapes())
 
-
     def test_reader_len_no_dbf_shx(self):
         """
         Assert that calling len() on reader when dbf and shx file is missing,
@@ -1216,7 +1180,6 @@ class TestPySHP(unittest.TestCase):
         shp = open(basename + ".shp", "rb")
         with shapefile.Reader(shp=shp) as sf:
             assert len(sf) == len(sf.shapes())
-
 
     def test_reader_corrupt_files(self):
         """
@@ -1255,7 +1218,6 @@ class TestPySHP(unittest.TestCase):
             end = sf.shp.tell()
             assert (end - stopped) == 5
 
-
     def test_bboxfilter_shape(self):
         """
         Assert that applying the bbox filter to shape() correctly ignores the shape
@@ -1268,7 +1230,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             assert sf.shape(0, bbox=inside) is not None
             assert sf.shape(0, bbox=outside) is None
-
 
     def test_bboxfilter_shapes(self):
         """
@@ -1291,7 +1252,6 @@ class TestPySHP(unittest.TestCase):
                 assert shape.oid == man.oid
                 assert shape.__geo_interface__ == man.__geo_interface__
 
-
     def test_bboxfilter_shapes_outside(self):
         """
         Assert that applying the bbox filter to shapes() correctly returns
@@ -1301,7 +1261,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader("shapefiles/blockgroups") as sf:
             shapes = sf.shapes(bbox=bbox)
             assert len(shapes) == 0
-
 
     def test_bboxfilter_itershapes(self):
         """
@@ -1324,7 +1283,6 @@ class TestPySHP(unittest.TestCase):
                 assert shape.oid == man.oid
                 assert shape.__geo_interface__ == man.__geo_interface__
 
-
     def test_bboxfilter_shaperecord(self):
         """
         Assert that applying the bbox filter to shapeRecord() correctly ignores the shape
@@ -1341,7 +1299,6 @@ class TestPySHP(unittest.TestCase):
             assert shaperec.shape.oid == shaperec.record.oid
             # outside
             assert sf.shapeRecord(0, bbox=outside) is None
-
 
     def test_bboxfilter_shaperecords(self):
         """
@@ -1370,7 +1327,6 @@ class TestPySHP(unittest.TestCase):
                 assert shaperec.record.oid == man.record.oid
                 assert shaperec.record == man.record
 
-
     def test_bboxfilter_itershaperecords(self):
         """
         Assert that applying the bbox filter to iterShapeRecords() correctly ignores shapes
@@ -1398,7 +1354,6 @@ class TestPySHP(unittest.TestCase):
                 assert shaperec.record.oid == man.record.oid
                 assert shaperec.record == man.record
 
-
     def test_shaperecords_shaperecord(self):
         """
         Assert that shapeRecords returns a list of
@@ -1419,7 +1374,6 @@ class TestPySHP(unittest.TestCase):
             should_match_json = should_match.shape.__geo_interface__
             assert shaperec_json == should_match_json
 
-
     def test_shaperecord_shape(self):
         """
         Assert that a ShapeRecord object has a shape
@@ -1431,7 +1385,6 @@ class TestPySHP(unittest.TestCase):
             point = shape.points[0]
             assert len(point) == 2
 
-
     def test_shaperecord_record(self):
         """
         Assert that a ShapeRecord object has a record
@@ -1442,7 +1395,6 @@ class TestPySHP(unittest.TestCase):
             record = shaperec.record
 
             assert record[1:3] == ["060750601001", 4715]
-
 
     @wrap_test_with_tempdir
     def test_write_field_name_limit(self, tmpdir):
@@ -1464,7 +1416,6 @@ class TestPySHP(unittest.TestCase):
             assert len(fields[2][0]) == 10
             assert len(fields[3][0]) == 10
             assert len(fields[4][0]) == 10
-
 
     @wrap_test_with_tempdir
     def test_write_shp_only(self, tmpdir):
@@ -1499,7 +1450,6 @@ class TestPySHP(unittest.TestCase):
         # assert test.dbf does not exist
         assert not os.path.exists(filename + ".dbf")
 
-
     @wrap_test_with_tempdir
     def test_write_shp_shx_only(self, tmpdir):
         """
@@ -1531,7 +1481,6 @@ class TestPySHP(unittest.TestCase):
 
         # assert test.dbf does not exist
         assert not os.path.exists(filename + ".dbf")
-
 
     @wrap_test_with_tempdir
     def test_write_shp_dbf_only(self, tmpdir):
@@ -1569,7 +1518,6 @@ class TestPySHP(unittest.TestCase):
         # assert test.shx does not exist
         assert not os.path.exists(filename + ".shx")
 
-
     @wrap_test_with_tempdir
     def test_write_dbf_only(self, tmpdir):
         """
@@ -1601,7 +1549,6 @@ class TestPySHP(unittest.TestCase):
         # assert test.shx does not exist
         assert not os.path.exists(filename + ".shx")
 
-
     @wrap_test_with_tempdir
     def test_write_default_shp_shx_dbf(self, tmpdir):
         """
@@ -1620,7 +1567,6 @@ class TestPySHP(unittest.TestCase):
         assert os.path.exists(filename + ".shx")
         assert os.path.exists(filename + ".dbf")
 
-
     @wrap_test_with_tempdir
     def test_write_pathlike(self, tmpdir):
         """
@@ -1636,7 +1582,6 @@ class TestPySHP(unittest.TestCase):
         assert (filename + ".shp").ensure()
         assert (filename + ".shx").ensure()
         assert (filename + ".dbf").ensure()
-
 
     @wrap_test_with_tempdir
     def test_write_filelike(self, tmpdir):
@@ -1655,7 +1600,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(shp=shp, shx=shx, dbf=dbf) as reader:
             assert len(reader) == 1
             assert reader.shape(0).shapeType == shapefile.NULL
-
 
     @wrap_test_with_tempdir
     def test_write_close_path(self, tmpdir):
@@ -1678,7 +1622,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(tmpdir.join("test")) as reader:
             assert len(reader) == 1
             assert reader.shape(0).shapeType == shapefile.NULL
-
 
     @wrap_test_with_tempdir
     def test_write_close_filelike(self, tmpdir):
@@ -1705,7 +1648,6 @@ class TestPySHP(unittest.TestCase):
             assert len(reader) == 1
             assert reader.shape(0).shapeType == shapefile.NULL
 
-
     @wrap_test_with_tempdir
     def test_write_context_path(self, tmpdir):
         """
@@ -1726,7 +1668,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(tmpdir.join("test")) as reader:
             assert len(reader) == 1
             assert reader.shape(0).shapeType == shapefile.NULL
-
 
     @wrap_test_with_tempdir
     def test_write_context_filelike(self, tmpdir):
@@ -1752,7 +1693,6 @@ class TestPySHP(unittest.TestCase):
             assert len(reader) == 1
             assert reader.shape(0).shapeType == shapefile.NULL
 
-
     @wrap_test_with_tempdir
     def test_write_shapefile_extension_ignored(self, tmpdir):
         """
@@ -1773,7 +1713,6 @@ class TestPySHP(unittest.TestCase):
 
         # assert test.abc does not exist
         assert not os.path.exists(basepath + ext)
-
 
     @wrap_test_with_tempdir
     def test_write_record(self, tmpdir):
@@ -1801,7 +1740,6 @@ class TestPySHP(unittest.TestCase):
         with shapefile.Reader(filename) as reader:
             for record in reader.iterRecords():
                 assert record == values
-
 
     @wrap_test_with_tempdir
     def test_write_partial_record(self, tmpdir):
@@ -1834,7 +1772,6 @@ class TestPySHP(unittest.TestCase):
 
             assert len(reader.records()) == 4
 
-
     @wrap_test_with_tempdir
     def test_write_geojson(self, tmpdir):
         """
@@ -1861,7 +1798,6 @@ class TestPySHP(unittest.TestCase):
                 assert json.dumps(feat.__geo_interface__)
             assert json.dumps(r.shapeRecords().__geo_interface__)
             assert json.dumps(r.__geo_interface__)
-
 
     @wrap_test_shape_types
     @wrap_test_with_tempdir
