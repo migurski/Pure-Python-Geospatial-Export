@@ -13,10 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.13
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: 3.13
 
     - name: Cache pip dependencies
       uses: actions/cache@v3
@@ -42,7 +42,7 @@ jobs:
 
     - name: Run formatting check
       run: |
-        python -m ruff format --check ppge/*.py ppge-tests/test-ppge.py
+        python -m ruff format --check ppge/*.py ppge-tests/test-*.py
 
     - name: Run tests
       run: |
