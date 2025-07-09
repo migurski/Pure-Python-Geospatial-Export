@@ -3,13 +3,15 @@
 Pure Python Geospatial Export (PPGE) module for converting CSV data to various geospatial formats.
 """
 
-import shapefile
-import shapely
 import json
 import itertools
 import csv
 from typing import Iterator, Dict, Any
 from enum import Enum
+
+import geomet.wkt
+
+from . import pyshp
 
 
 class GeometryFormat(Enum):
@@ -83,7 +85,7 @@ def export_to_shapefile_from_rows(
     if not sample_rows:
         return
 
-    with shapefile.Writer(f"{output_path}.shp", shapeType=5) as shp:
+    with pyshp.Writer(f"{output_path}.shp", shapeType=5) as shp:
         # Add fields for all non-geometry columns
         for key, value in sample_rows[0].items():
             if key != geom_key:
@@ -102,11 +104,10 @@ def export_to_shapefile_from_rows(
             geometry = row[geom_key]
 
             if geom_format == GeometryFormat.WKT:
-                # Parse WKT using shapely
-                shapely_geom = shapely.from_wkt(geometry)
-                coords = shapely_geom.__geo_interface__["coordinates"]
+                # Parse WKT
+                coords = geomet.wkt.loads(geometry)["coordinates"]
             else:  # GeoJSON
-                coords = shapely.from_geojson(geometry).__geo_interface__["coordinates"]
+                coords = json.loads(geometry)["coordinates"]
 
             # Create record with all non-geometry fields
             record = {k: v for k, v in row.items() if k != geom_key}
@@ -151,9 +152,8 @@ def export_to_geojson_from_rows(
         # Convert WKT to GeoJSON if needed
         if geom_format == GeometryFormat.WKT:
             if isinstance(geometry, str):
-                # Convert WKT to GeoJSON using shapely
-                shapely_geom = shapely.from_wkt(geometry)
-                geometry = shapely_geom.__geo_interface__
+                # Convert WKT to GeoJSON
+                geometry = geomet.wkt.loads(geometry)
             else:
                 # Already a dict, assume it's GeoJSON
                 geometry = geometry
@@ -219,14 +219,12 @@ def export_to_csv_from_rows(
             if geom_format == GeometryFormat.GEOJSON:
                 if isinstance(geometry, str):
                     geometry = json.loads(geometry)
-                # Convert GeoJSON to WKT using shapely
-                shapely_geom = shapely.from_geojson(json.dumps(geometry))
-                geometry = shapely_geom.wkt
+                # Convert GeoJSON to WKT
+                geometry = geomet.wkt.dumps(geometry)
             else:  # WKT
                 if not isinstance(geometry, str):
                     # Convert dict to WKT if needed
-                    shapely_geom = shapely.from_geojson(json.dumps(geometry))
-                    geometry = shapely_geom.wkt
+                    geometry = geomet.wkt.dumps(geometry)
 
             # Create row dict with all non-geometry fields plus geometry
             csv_row = {k: v for k, v in row.items() if k != geom_key}

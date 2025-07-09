@@ -5,10 +5,6 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "Pure-Python-Geospatial-Export"
 version = "0.1.0"
-dependencies = [
-    "pyshp==2.3.1",
-    "shapely==2.0.7",
-]
 
 [project.optional-dependencies]
 test = [
@@ -16,4 +12,5 @@ test = [
     "py==1.11.0",
     "pytest>=3.7",
     "ruff==0.12.2",
+    "shapely==2.0.7",
 ]
