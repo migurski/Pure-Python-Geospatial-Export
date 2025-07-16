@@ -123,18 +123,10 @@ def export_to_shapefile_from_rows(
             for field in schema:
                 if field.name == geom_key:
                     continue
-                value = row.get(field.name)
-                if value is None:
-                    if not field.nullable:
-                        raise ValueError(
-                            f"Field '{field.name}' is not nullable but value is None"
-                        )
-                    record[field.name] = None
-                else:
-                    try:
-                        record[field.name] = converter[field.name](value)
-                    except Exception as e:
-                        raise ValueError(f"Field '{field.name}' conversion error: {e}")
+                try:
+                    record[field.name] = converter[field.name](row.get(field.name))
+                except Exception as e:
+                    raise ValueError(f"Field '{field.name}' conversion error: {e}")
             shp.record(**record)
             shp.poly(coords)
     with open(f"{output_path}.prj", "w") as prj:
@@ -164,18 +156,10 @@ def export_to_geojson_from_rows(
         for field in schema:
             if field.name == geom_key:
                 continue
-            value = row.get(field.name)
-            if value is None:
-                if not field.nullable:
-                    raise ValueError(
-                        f"Field '{field.name}' is not nullable but value is None"
-                    )
-                properties[field.name] = None
-            else:
-                try:
-                    properties[field.name] = converter[field.name](value)
-                except Exception as e:
-                    raise ValueError(f"Field '{field.name}' conversion error: {e}")
+            try:
+                properties[field.name] = converter[field.name](row.get(field.name))
+            except Exception as e:
+                raise ValueError(f"Field '{field.name}' conversion error: {e}")
         feature = {"type": "Feature", "geometry": geometry, "properties": properties}
         geojson["features"].append(feature)
     with open(output_path, "w") as f:
@@ -210,18 +194,10 @@ def export_to_csv_from_rows(
             for field in schema:
                 if field.name == geom_key:
                     continue
-                value = row.get(field.name)
-                if value is None:
-                    if not field.nullable:
-                        raise ValueError(
-                            f"Field '{field.name}' is not nullable but value is None"
-                        )
-                    csv_row[field.name] = None
-                else:
-                    try:
-                        csv_row[field.name] = converter[field.name](value)
-                    except Exception as e:
-                        raise ValueError(f"Field '{field.name}' conversion error: {e}")
+                try:
+                    csv_row[field.name] = converter[field.name](row.get(field.name))
+                except Exception as e:
+                    raise ValueError(f"Field '{field.name}' conversion error: {e}")
             csv_row[geometry_column] = geometry
             writer.writerow(csv_row)
 
