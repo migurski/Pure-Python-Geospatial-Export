@@ -6,7 +6,6 @@ Pure Python Geospatial Export (PPGE) module for converting CSV data to various g
 import csv
 import dataclasses
 import enum
-import itertools
 import json
 import typing
 
@@ -41,28 +40,6 @@ class Field:
     nullable: bool
 
 
-def _get_sample_rows(
-    rows: typing.Iterator[dict[str, typing.Any]], max_sample: int
-) -> tuple[list[dict[str, typing.Any]], typing.Iterator[dict[str, typing.Any]]]:
-    """
-    Get sample rows for schema detection while preserving the original iterator.
-
-    Args:
-        rows: Original row iterator
-        max_sample: Maximum number of rows to sample
-
-    Returns:
-        Tuple of (sample_rows, full_iterator)
-    """
-    # Create two iterators from the original one
-    rows1, rows2 = itertools.tee(rows)
-
-    # Get sample rows using islice
-    sample_rows = list(itertools.islice(rows1, max_sample))
-
-    return sample_rows, rows2
-
-
 def _get_geometry_column_name(existing_columns: set) -> str:
     """
     Determine the name for the geometry column, avoiding conflicts.
@@ -85,6 +62,36 @@ def _get_geometry_column_name(existing_columns: set) -> str:
         return f"geometry_{counter}"
 
 
+def _get_record_converter(schema: list[Field]) -> dict[str, typing.Callable]:
+    """Create a mapping of names to conversion functions for schema fields"""
+    converter = {}
+
+    def _complain_if_null(name: str, value: typing.Any) -> typing.Any:
+        if value is None:
+            raise ValueError(f"Field '{name}' is not nullable but value is None")
+        return value
+
+    for field in schema:
+        if field.type is FieldType.INT:
+            converter[field.name] = int
+        elif field.type is FieldType.FLOAT:
+            converter[field.name] = float
+        elif field.type is FieldType.STR:
+            converter[field.name] = str
+        elif field.type is FieldType.BOOL:
+            converter[field.name] = bool
+        elif field.type is FieldType.BYTES:
+            converter[field.name] = bytes
+        else:
+            converter[field.name] = lambda x: x
+
+        if not field.nullable:
+            _cv = converter[field.name]
+            converter[field.name] = lambda val: _complain_if_null(field.name, _cv(val))
+
+    return converter
+
+
 def export_to_shapefile_from_rows(
     schema: list[Field],
     rows: typing.Iterator[dict[str, typing.Any]],
@@ -92,20 +99,7 @@ def export_to_shapefile_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    def get_converter(field_type):
-        if field_type == FieldType.INT:
-            return int
-        elif field_type == FieldType.FLOAT:
-            return float
-        elif field_type == FieldType.STR:
-            return str
-        elif field_type == FieldType.BOOL:
-            return bool
-        elif field_type == FieldType.BYTES:
-            return bytes
-        else:
-            return lambda x: x
-
+    converter = _get_record_converter(schema)
     with pyshp.Writer(f"{output_path}.shp", shapeType=5) as shp:
         for field in schema:
             if field.name != geom_key:
@@ -138,7 +132,7 @@ def export_to_shapefile_from_rows(
                     record[field.name] = None
                 else:
                     try:
-                        record[field.name] = get_converter(field.type)(value)
+                        record[field.name] = converter[field.name](value)
                     except Exception as e:
                         raise ValueError(f"Field '{field.name}' conversion error: {e}")
             shp.record(**record)
@@ -156,20 +150,7 @@ def export_to_geojson_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    def get_converter(field_type):
-        if field_type == FieldType.INT:
-            return int
-        elif field_type == FieldType.FLOAT:
-            return float
-        elif field_type == FieldType.STR:
-            return str
-        elif field_type == FieldType.BOOL:
-            return bool
-        elif field_type == FieldType.BYTES:
-            return bytes
-        else:
-            return lambda x: x
-
+    converter = _get_record_converter(schema)
     geojson = {"type": "FeatureCollection", "features": []}
     for row in rows:
         geometry = row[geom_key]
@@ -192,7 +173,7 @@ def export_to_geojson_from_rows(
                 properties[field.name] = None
             else:
                 try:
-                    properties[field.name] = get_converter(field.type)(value)
+                    properties[field.name] = converter[field.name](value)
                 except Exception as e:
                     raise ValueError(f"Field '{field.name}' conversion error: {e}")
         feature = {"type": "Feature", "geometry": geometry, "properties": properties}
@@ -208,20 +189,7 @@ def export_to_csv_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    def get_converter(field_type):
-        if field_type == FieldType.INT:
-            return int
-        elif field_type == FieldType.FLOAT:
-            return float
-        elif field_type == FieldType.STR:
-            return str
-        elif field_type == FieldType.BOOL:
-            return bool
-        elif field_type == FieldType.BYTES:
-            return bytes
-        else:
-            return lambda x: x
-
+    converter = _get_record_converter(schema)
     existing_columns = {field.name for field in schema}
     geometry_column = _get_geometry_column_name(existing_columns)
     fieldnames = [field.name for field in schema if field.name != geom_key]
@@ -251,7 +219,7 @@ def export_to_csv_from_rows(
                     csv_row[field.name] = None
                 else:
                     try:
-                        csv_row[field.name] = get_converter(field.type)(value)
+                        csv_row[field.name] = converter[field.name](value)
                     except Exception as e:
                         raise ValueError(f"Field '{field.name}' conversion error: {e}")
             csv_row[geometry_column] = geometry
