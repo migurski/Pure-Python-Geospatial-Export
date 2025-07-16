@@ -3,6 +3,7 @@
 Pure Python Geospatial Export (PPGE) module for converting CSV data to various geospatial formats.
 """
 
+import dataclasses
 import json
 import itertools
 import csv
@@ -31,6 +32,13 @@ class GeometryFormat(Enum):
 
     WKT = "WKT"
     GEOJSON = "GeoJSON"
+
+
+@dataclasses.dataclass
+class Field():
+    name: str
+    type: FieldType | str
+    nullable: bool
 
 
 def _get_sample_rows(
