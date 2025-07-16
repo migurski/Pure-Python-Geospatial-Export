@@ -35,7 +35,7 @@ class GeometryFormat(Enum):
 
 
 @dataclasses.dataclass
-class Field():
+class Field:
     name: str
     type: FieldType | str
     nullable: bool
