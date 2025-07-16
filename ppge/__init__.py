@@ -14,6 +14,18 @@ import geomet.wkt
 from . import pyshp
 
 
+class FieldType(Enum):
+    """Enumeration of schema field types."""
+
+    INT = "int"
+    FLOAT = "float"
+    STR = "str"
+    BYTES = "bytes"
+    BOOL = "bool"
+    GEOM = "geom"
+    GEOG = "geog"
+
+
 class GeometryFormat(Enum):
     """Enumeration of supported geometry formats."""
 
