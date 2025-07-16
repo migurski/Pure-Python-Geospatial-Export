@@ -3,19 +3,19 @@
 Pure Python Geospatial Export (PPGE) module for converting CSV data to various geospatial formats.
 """
 
-import dataclasses
-import json
-import itertools
 import csv
-from typing import Iterator, Dict, Any
-from enum import Enum
+import dataclasses
+import enum
+import itertools
+import json
+import typing
 
 import geomet.wkt
 
 from . import pyshp
 
 
-class FieldType(Enum):
+class FieldType(enum.Enum):
     """Enumeration of schema field types."""
 
     INT = "int"
@@ -27,7 +27,7 @@ class FieldType(Enum):
     GEOG = "geog"
 
 
-class GeometryFormat(Enum):
+class GeometryFormat(enum.Enum):
     """Enumeration of supported geometry formats."""
 
     WKT = "WKT"
@@ -42,8 +42,8 @@ class Field:
 
 
 def _get_sample_rows(
-    rows: Iterator[Dict[str, Any]], max_sample: int
-) -> tuple[list[Dict[str, Any]], Iterator[Dict[str, Any]]]:
+    rows: typing.Iterator[dict[str, typing.Any]], max_sample: int
+) -> tuple[list[dict[str, typing.Any]], typing.Iterator[dict[str, typing.Any]]]:
     """
     Get sample rows for schema detection while preserving the original iterator.
 
@@ -86,7 +86,7 @@ def _get_geometry_column_name(existing_columns: set) -> str:
 
 
 def export_to_shapefile_from_rows(
-    rows: Iterator[Dict[str, Any]],
+    rows: typing.Iterator[dict[str, typing.Any]],
     output_path: str,
     geom_key: str,
     geom_format: GeometryFormat,
@@ -142,7 +142,7 @@ def export_to_shapefile_from_rows(
 
 
 def export_to_geojson_from_rows(
-    rows: Iterator[Dict[str, Any]],
+    rows: typing.Iterator[dict[str, typing.Any]],
     output_path: str,
     geom_key: str,
     geom_format: GeometryFormat,
@@ -195,7 +195,7 @@ def export_to_geojson_from_rows(
 
 
 def export_to_csv_from_rows(
-    rows: Iterator[Dict[str, Any]],
+    rows: typing.Iterator[dict[str, typing.Any]],
     output_path: str,
     geom_key: str,
     geom_format: GeometryFormat,
@@ -254,7 +254,7 @@ def export_to_csv_from_rows(
 
 
 def process_bigquery_rows_to_shapefile(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to Shapefile.
@@ -267,7 +267,7 @@ def process_bigquery_rows_to_shapefile(
 
 
 def process_snowflake_rows_to_shapefile(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to Shapefile.
@@ -280,7 +280,7 @@ def process_snowflake_rows_to_shapefile(
 
 
 def process_bigquery_rows_to_geojson(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to GeoJSON.
@@ -293,7 +293,7 @@ def process_bigquery_rows_to_geojson(
 
 
 def process_snowflake_rows_to_geojson(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to GeoJSON.
@@ -306,7 +306,7 @@ def process_snowflake_rows_to_geojson(
 
 
 def process_bigquery_rows_to_csv(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to CSV with WKT geometry.
@@ -319,7 +319,7 @@ def process_bigquery_rows_to_csv(
 
 
 def process_snowflake_rows_to_csv(
-    rows: Iterator[Dict[str, Any]], output_path: str
+    rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to CSV with WKT geometry.
