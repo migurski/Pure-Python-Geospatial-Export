@@ -9,6 +9,7 @@ import unittest
 import csv
 import shapely
 import json
+from ppge import Field, FieldType
 import ppge
 
 
@@ -153,7 +154,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("name", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows")
-        ppge.process_bigquery_rows_to_shapefile(rows, output_path)
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.STR, False),
+        ]
+        ppge.process_bigquery_rows_to_shapefile(rows, output_path, schema)
 
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
@@ -186,7 +191,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("NAME", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows")
-        ppge.process_snowflake_rows_to_shapefile(rows, output_path)
+        schema = [
+            Field("GEOM", FieldType.GEOG, False),
+            Field("NAME", FieldType.STR, False),
+        ]
+        ppge.process_snowflake_rows_to_shapefile(rows, output_path, schema)
 
         # Verify files were created (.shp, .shx, .dbf, .prj)
         shp_file = f"{output_path}.shp"
@@ -219,7 +228,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("name", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows.geojson")
-        ppge.process_bigquery_rows_to_geojson(rows, output_path)
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.STR, False),
+        ]
+        ppge.process_bigquery_rows_to_geojson(rows, output_path, schema)
 
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
@@ -236,7 +249,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("NAME", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows.geojson")
-        ppge.process_snowflake_rows_to_geojson(rows, output_path)
+        schema = [
+            Field("GEOM", FieldType.GEOG, False),
+            Field("NAME", FieldType.STR, False),
+        ]
+        ppge.process_snowflake_rows_to_geojson(rows, output_path, schema)
 
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
@@ -253,7 +270,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("name", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_bigquery_rows.csv")
-        ppge.process_bigquery_rows_to_csv(rows, output_path)
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.STR, False),
+        ]
+        ppge.process_bigquery_rows_to_csv(rows, output_path, schema)
 
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
@@ -270,7 +291,11 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("NAME", rows[0])
 
         output_path = os.path.join(self.temp_dir, "test_snowflake_rows.csv")
-        ppge.process_snowflake_rows_to_csv(rows, output_path)
+        schema = [
+            Field("GEOM", FieldType.GEOG, False),
+            Field("NAME", FieldType.STR, False),
+        ]
+        ppge.process_snowflake_rows_to_csv(rows, output_path, schema)
 
         # Verify file was created
         self.assertTrue(os.path.exists(output_path))
