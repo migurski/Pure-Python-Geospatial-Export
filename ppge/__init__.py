@@ -92,17 +92,21 @@ def export_to_shapefile_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    """
-    Export row iterator to Shapefile format using provided schema.
-    Args:
-        schema: List of Field instances defining output fields
-        rows: Iterator yielding dictionaries with geometry and other data
-        output_path: Path for the output Shapefile (without extension)
-        geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data (WKT or GeoJSON)
-    """
+    def get_converter(field_type):
+        if field_type == FieldType.INT:
+            return int
+        elif field_type == FieldType.FLOAT:
+            return float
+        elif field_type == FieldType.STR:
+            return str
+        elif field_type == FieldType.BOOL:
+            return bool
+        elif field_type == FieldType.BYTES:
+            return bytes
+        else:
+            return lambda x: x
+
     with pyshp.Writer(f"{output_path}.shp", shapeType=5) as shp:
-        # Add fields for all non-geometry columns from schema
         for field in schema:
             if field.name != geom_key:
                 if field.type == FieldType.STR:
@@ -114,15 +118,29 @@ def export_to_shapefile_from_rows(
                 elif field.type == FieldType.BOOL:
                     shp.field(field.name, "L")
                 else:
-                    shp.field(field.name, "C")  # Default to character field
-        # Export all rows
+                    shp.field(field.name, "C")
         for row in rows:
             geometry = row[geom_key]
             if geom_format == GeometryFormat.WKT:
                 coords = geomet.wkt.loads(geometry)["coordinates"]
-            else:  # GeoJSON
+            else:
                 coords = json.loads(geometry)["coordinates"]
-            record = {k: v for k, v in row.items() if k != geom_key}
+            record = {}
+            for field in schema:
+                if field.name == geom_key:
+                    continue
+                value = row.get(field.name)
+                if value is None:
+                    if not field.nullable:
+                        raise ValueError(
+                            f"Field '{field.name}' is not nullable but value is None"
+                        )
+                    record[field.name] = None
+                else:
+                    try:
+                        record[field.name] = get_converter(field.type)(value)
+                    except Exception as e:
+                        raise ValueError(f"Field '{field.name}' conversion error: {e}")
             shp.record(**record)
             shp.poly(coords)
     with open(f"{output_path}.prj", "w") as prj:
@@ -138,25 +156,45 @@ def export_to_geojson_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    """
-    Export row iterator to GeoJSON format using provided schema.
-    Args:
-        schema: List of Field instances defining output fields
-        rows: Iterator yielding dictionaries with geometry and other data
-        output_path: Path for the output GeoJSON file
-        geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data (WKT or GeoJSON)
-    """
+    def get_converter(field_type):
+        if field_type == FieldType.INT:
+            return int
+        elif field_type == FieldType.FLOAT:
+            return float
+        elif field_type == FieldType.STR:
+            return str
+        elif field_type == FieldType.BOOL:
+            return bool
+        elif field_type == FieldType.BYTES:
+            return bytes
+        else:
+            return lambda x: x
+
     geojson = {"type": "FeatureCollection", "features": []}
     for row in rows:
         geometry = row[geom_key]
         if geom_format == GeometryFormat.WKT:
             if isinstance(geometry, str):
                 geometry = geomet.wkt.loads(geometry)
-        else:  # GeoJSON
+        else:
             if isinstance(geometry, str):
                 geometry = json.loads(geometry)
-        properties = {k: v for k, v in row.items() if k != geom_key}
+        properties = {}
+        for field in schema:
+            if field.name == geom_key:
+                continue
+            value = row.get(field.name)
+            if value is None:
+                if not field.nullable:
+                    raise ValueError(
+                        f"Field '{field.name}' is not nullable but value is None"
+                    )
+                properties[field.name] = None
+            else:
+                try:
+                    properties[field.name] = get_converter(field.type)(value)
+                except Exception as e:
+                    raise ValueError(f"Field '{field.name}' conversion error: {e}")
         feature = {"type": "Feature", "geometry": geometry, "properties": properties}
         geojson["features"].append(feature)
     with open(output_path, "w") as f:
@@ -170,19 +208,22 @@ def export_to_csv_from_rows(
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
-    """
-    Export row iterator to CSV format with WKT geometry column using provided schema.
-    Args:
-        schema: List of Field instances defining output fields
-        rows: Iterator yielding dictionaries with geometry and other data
-        output_path: Path for the output CSV file
-        geom_key: Key for the geometry field in the row dictionary
-        geom_format: Format of geometry data (WKT or GeoJSON)
-    """
-    # Determine geometry column name
+    def get_converter(field_type):
+        if field_type == FieldType.INT:
+            return int
+        elif field_type == FieldType.FLOAT:
+            return float
+        elif field_type == FieldType.STR:
+            return str
+        elif field_type == FieldType.BOOL:
+            return bool
+        elif field_type == FieldType.BYTES:
+            return bytes
+        else:
+            return lambda x: x
+
     existing_columns = {field.name for field in schema}
     geometry_column = _get_geometry_column_name(existing_columns)
-    # Prepare fieldnames for CSV writer
     fieldnames = [field.name for field in schema if field.name != geom_key]
     fieldnames.append(geometry_column)
     with open(output_path, "w", newline="") as csvfile:
@@ -194,10 +235,25 @@ def export_to_csv_from_rows(
                 if isinstance(geometry, str):
                     geometry = json.loads(geometry)
                 geometry = geomet.wkt.dumps(geometry)
-            else:  # WKT
+            else:
                 if not isinstance(geometry, str):
                     geometry = geomet.wkt.dumps(geometry)
-            csv_row = {k: v for k, v in row.items() if k != geom_key}
+            csv_row = {}
+            for field in schema:
+                if field.name == geom_key:
+                    continue
+                value = row.get(field.name)
+                if value is None:
+                    if not field.nullable:
+                        raise ValueError(
+                            f"Field '{field.name}' is not nullable but value is None"
+                        )
+                    csv_row[field.name] = None
+                else:
+                    try:
+                        csv_row[field.name] = get_converter(field.type)(value)
+                    except Exception as e:
+                        raise ValueError(f"Field '{field.name}' conversion error: {e}")
             csv_row[geometry_column] = geometry
             writer.writerow(csv_row)
 

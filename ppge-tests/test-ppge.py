@@ -304,6 +304,45 @@ class TestGeospatialExport(unittest.TestCase):
         # Validate the exported data using CSV validation
         self.validate_csv_data(output_path, "NAME", "geometry")
 
+    def test_shapefile_valueerror_on_type(self):
+        rows = [
+            {"geom": "POINT(0 0)", "name": "Wyoming"},
+            {"geom": "POINT(1 1)", "name": "Colorado"},
+        ]
+        output_path = os.path.join(self.temp_dir, "test_valueerror_shapefile")
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.INT, False),
+        ]
+        with self.assertRaises(ValueError):
+            ppge.process_bigquery_rows_to_shapefile(rows, output_path, schema)
+
+    def test_geojson_valueerror_on_type(self):
+        rows = [
+            {"geom": "POINT(0 0)", "name": "Wyoming"},
+            {"geom": "POINT(1 1)", "name": "Colorado"},
+        ]
+        output_path = os.path.join(self.temp_dir, "test_valueerror.geojson")
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.INT, False),
+        ]
+        with self.assertRaises(ValueError):
+            ppge.process_bigquery_rows_to_geojson(rows, output_path, schema)
+
+    def test_csv_valueerror_on_type(self):
+        rows = [
+            {"geom": "POINT(0 0)", "name": "Wyoming"},
+            {"geom": "POINT(1 1)", "name": "Colorado"},
+        ]
+        output_path = os.path.join(self.temp_dir, "test_valueerror.csv")
+        schema = [
+            Field("geom", FieldType.GEOG, False),
+            Field("name", FieldType.INT, False),
+        ]
+        with self.assertRaises(ValueError):
+            ppge.process_bigquery_rows_to_csv(rows, output_path, schema)
+
 
 if __name__ == "__main__":
     unittest.main()
