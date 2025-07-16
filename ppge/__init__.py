@@ -203,7 +203,7 @@ def export_to_csv_from_rows(
 
 
 def process_bigquery_rows_to_shapefile(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to Shapefile.
@@ -216,7 +216,7 @@ def process_bigquery_rows_to_shapefile(
 
 
 def process_snowflake_rows_to_shapefile(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to Shapefile.
@@ -231,7 +231,7 @@ def process_snowflake_rows_to_shapefile(
 
 
 def process_bigquery_rows_to_geojson(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to GeoJSON.
@@ -244,7 +244,7 @@ def process_bigquery_rows_to_geojson(
 
 
 def process_snowflake_rows_to_geojson(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to GeoJSON.
@@ -259,7 +259,7 @@ def process_snowflake_rows_to_geojson(
 
 
 def process_bigquery_rows_to_csv(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process BigQuery row iterator and export to CSV with WKT geometry.
@@ -272,7 +272,7 @@ def process_bigquery_rows_to_csv(
 
 
 def process_snowflake_rows_to_csv(
-    rows: typing.Iterator[dict[str, typing.Any]], output_path: str, schema: list[Field]
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
 ) -> None:
     """
     Process Snowflake row iterator and export to CSV with WKT geometry.
