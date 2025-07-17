@@ -134,15 +134,15 @@ class TestGeospatialExport(unittest.TestCase):
         denver_poly = shapely.Point(-105.0, 39.7).buffer(1)
         self.assertTrue(colorado_geom.intersects(denver_poly))
 
-    def test_bigquery_rows_to_shapefile(self):
+    def test_bigquery_polygon_rows_to_shapefile(self):
         """Test BigQuery CSV row iterator to Shapefile export."""
         rows = list(csv_row_iterator(BIGQUERY_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.STR, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
         ]
         shp = io.BytesIO()
         shx = io.BytesIO()
@@ -162,15 +162,70 @@ class TestGeospatialExport(unittest.TestCase):
             gdf = geopandas.read_file(f"{base}.shp")
             self.validate_exported_data(gdf, "name")
 
-    def test_snowflake_rows_to_shapefile(self):
+    def test_bigquery_point_rows_to_shapefile(self):
+        """Test BigQuery CSV row iterator to Shapefile export."""
+        rows = list(csv_row_iterator(BIGQUERY_POINT_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("geom", rows[0])
+        self.assertIn("name", rows[0])
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
+        ]
+        shp = io.BytesIO()
+        shx = io.BytesIO()
+        dbf = io.BytesIO()
+        prj = io.BytesIO()
+        ppge.process_bigquery_rows_to_shapefile(schema, rows, shp, shx, dbf, prj)
+        # Save buffers to files for geopandas
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = os.path.join(temp_dir, "test_bigquery_rows")
+            for ext, buf in zip(["shp", "shx", "dbf", "prj"], [shp, shx, dbf, prj]):
+                with open(f"{base}.{ext}", "wb") as f:
+                    buf.seek(0)
+                    f.write(buf.read())
+
+            import geopandas
+
+            gdf = geopandas.read_file(f"{base}.shp")
+            self.validate_exported_data(gdf, "name")
+
+    def test_snowflake_polygon_rows_to_shapefile(self):
         """Test Snowflake CSV row iterator to Shapefile export."""
         rows = list(csv_row_iterator(SNOWFLAKE_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
         schema = [
-            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
-            ppge.Field("NAME", ppge.FieldType.STR, False),
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
+        ]
+        shp = io.BytesIO()
+        shx = io.BytesIO()
+        dbf = io.BytesIO()
+        prj = io.BytesIO()
+        ppge.process_snowflake_rows_to_shapefile(schema, rows, shp, shx, dbf, prj)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = os.path.join(temp_dir, "test_snowflake_rows")
+            for ext, buf in zip(["shp", "shx", "dbf", "prj"], [shp, shx, dbf, prj]):
+                with open(f"{base}.{ext}", "wb") as f:
+                    buf.seek(0)
+                    f.write(buf.read())
+
+            import geopandas
+
+            gdf = geopandas.read_file(f"{base}.shp")
+            self.validate_exported_data(gdf, "NAME")
+
+    def test_snowflake_point_rows_to_shapefile(self):
+        """Test Snowflake CSV row iterator to Shapefile export."""
+        rows = list(csv_row_iterator(SNOWFLAKE_POINT_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("GEOM", rows[0])
+        self.assertIn("NAME", rows[0])
+        schema = [
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
         ]
         shp = io.BytesIO()
         shx = io.BytesIO()
@@ -196,8 +251,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.STR, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
@@ -211,8 +266,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.STR, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
@@ -226,8 +281,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
         schema = [
-            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
-            ppge.Field("NAME", ppge.FieldType.STR, False),
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_snowflake_rows_to_geojson(schema, rows, buf)
@@ -241,8 +296,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
         schema = [
-            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
-            ppge.Field("NAME", ppge.FieldType.STR, False),
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_snowflake_rows_to_geojson(schema, rows, buf)
@@ -256,8 +311,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.STR, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_bigquery_rows_to_csv(schema, rows, buf)
@@ -271,8 +326,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.STR, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_bigquery_rows_to_csv(schema, rows, buf)
@@ -286,8 +341,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
         schema = [
-            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
-            ppge.Field("NAME", ppge.FieldType.STR, False),
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POLYGON),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_snowflake_rows_to_csv(schema, rows, buf)
@@ -301,8 +356,8 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
         schema = [
-            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
-            ppge.Field("NAME", ppge.FieldType.STR, False),
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("NAME", ppge.FieldType.STR, False, None),
         ]
         buf = io.BytesIO()
         ppge.process_snowflake_rows_to_csv(schema, rows, buf)
@@ -315,8 +370,8 @@ class TestGeospatialExport(unittest.TestCase):
             {"geom": "POINT(1 1)", "name": "Colorado"},
         ]
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.INT, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.INT, False, None),
         ]
         shp = io.BytesIO()
         shx = io.BytesIO()
@@ -331,8 +386,8 @@ class TestGeospatialExport(unittest.TestCase):
             {"geom": "POINT(1 1)", "name": "Colorado"},
         ]
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.INT, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.INT, False, None),
         ]
         buf = io.BytesIO()
         with self.assertRaises(ValueError):
@@ -344,8 +399,8 @@ class TestGeospatialExport(unittest.TestCase):
             {"geom": "POINT(1 1)", "name": "Colorado"},
         ]
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
-            ppge.Field("name", ppge.FieldType.INT, False),
+            ppge.Field("geom", ppge.FieldType.GEOG, False, ppge.pyshp.POINT),
+            ppge.Field("name", ppge.FieldType.INT, False, None),
         ]
         buf = io.BytesIO()
         with self.assertRaises(ValueError):

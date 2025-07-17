@@ -38,6 +38,25 @@ class Field:
     name: str
     type: FieldType | str
     nullable: bool
+    shapetype: (
+        typing.Literal[
+            pyshp.NULL,
+            pyshp.POINT,
+            pyshp.POLYLINE,
+            pyshp.POLYGON,
+            pyshp.MULTIPOINT,
+            pyshp.POINTZ,
+            pyshp.POLYLINEZ,
+            pyshp.POLYGONZ,
+            pyshp.MULTIPOINTZ,
+            pyshp.POINTM,
+            pyshp.POLYLINEM,
+            pyshp.POLYGONM,
+            pyshp.MULTIPOINTM,
+            pyshp.MULTIPATCH,
+        ]
+        | None
+    )
 
 
 def _get_geometry_column_name(existing_columns: set) -> str:
@@ -113,25 +132,26 @@ def export_to_shapefile_from_rows(
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
     converter = _get_record_converter(schema)
-    with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=5) as shp_writer:
+    gfield = [f for f in schema if f.type in (FieldType.GEOM, FieldType.GEOG)][0]
+    with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=gfield.shapetype) as shpfile:
         for field in schema:
             if field.name != geom_key:
                 if field.type == FieldType.STR:
-                    shp_writer.field(field.name, "C")
+                    shpfile.field(field.name, "C")
                 elif field.type == FieldType.INT:
-                    shp_writer.field(field.name, "N")
+                    shpfile.field(field.name, "N")
                 elif field.type == FieldType.FLOAT:
-                    shp_writer.field(field.name, "F")
+                    shpfile.field(field.name, "F")
                 elif field.type == FieldType.BOOL:
-                    shp_writer.field(field.name, "L")
+                    shpfile.field(field.name, "L")
                 else:
-                    shp_writer.field(field.name, "C")
+                    shpfile.field(field.name, "C")
         for row in rows:
             geometry = row[geom_key]
             if geom_format == GeometryFormat.WKT:
-                coords = wkt.loads(geometry)["coordinates"]
+                shape = wkt.loads(geometry)
             else:
-                coords = json.loads(geometry)["coordinates"]
+                shape = json.loads(geometry)
             record = {}
             for field in schema:
                 if field.name == geom_key:
@@ -140,8 +160,8 @@ def export_to_shapefile_from_rows(
                     record[field.name] = converter[field.name](row.get(field.name))
                 except Exception as e:
                     raise ValueError(f"Field '{field.name}' conversion error: {e}")
-            shp_writer.record(**record)
-            shp_writer.poly(coords)
+            shpfile.record(**record)
+            shpfile.shape(shape)
     # Write projection file
     prj.write(
         b'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
