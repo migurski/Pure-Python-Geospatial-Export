@@ -16,7 +16,7 @@ import unittest
 
 from io import BytesIO
 
-from geomet import geopackage
+from ppge.geomet import geopackage
 
 
 def build_header(

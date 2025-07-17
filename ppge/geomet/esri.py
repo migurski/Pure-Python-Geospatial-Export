@@ -12,7 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-import geomet
+
+from . import InvalidGeoJSONException
 
 
 def load(source_file):
@@ -50,7 +51,7 @@ def loads(string):
     elif "points" in data:
         return _esri_to_geojson_convert["points"](data)
     else:
-        raise geomet.InvalidGeoJSONException("Invalid EsriJSON: %s" % string)
+        raise InvalidGeoJSONException("Invalid EsriJSON: %s" % string)
 
 
 def dump(obj, dest_file, srid=None):
@@ -74,7 +75,7 @@ def dumps(obj, srid=None):
         convert = _gj_to_esri[obj["type"].lower()]
         return convert(obj, srid=srid)
     else:
-        raise geomet.InvalidGeoJSONException("Invalid GeoJSON type %s" % obj)
+        raise InvalidGeoJSONException("Invalid GeoJSON type %s" % obj)
 
 
 def _extract_geojson_srid(obj):

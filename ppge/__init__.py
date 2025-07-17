@@ -10,8 +10,7 @@ import io
 import json
 import typing
 
-import geomet.wkt
-
+from .geomet import wkt
 from . import pyshp
 
 
@@ -130,7 +129,7 @@ def export_to_shapefile_from_rows(
         for row in rows:
             geometry = row[geom_key]
             if geom_format == GeometryFormat.WKT:
-                coords = geomet.wkt.loads(geometry)["coordinates"]
+                coords = wkt.loads(geometry)["coordinates"]
             else:
                 coords = json.loads(geometry)["coordinates"]
             record = {}
@@ -171,7 +170,7 @@ def export_to_geojson_from_rows(
         geometry = row[geom_key]
         if geom_format == GeometryFormat.WKT:
             if isinstance(geometry, str):
-                geometry = geomet.wkt.loads(geometry)
+                geometry = wkt.loads(geometry)
         else:
             if isinstance(geometry, str):
                 geometry = json.loads(geometry)
@@ -221,10 +220,10 @@ def export_to_csv_from_rows(
         if geom_format == GeometryFormat.GEOJSON:
             if isinstance(geometry, str):
                 geometry = json.loads(geometry)
-            geometry = geomet.wkt.dumps(geometry)
+            geometry = wkt.dumps(geometry)
         else:
             if not isinstance(geometry, str):
-                geometry = geomet.wkt.dumps(geometry)
+                geometry = wkt.dumps(geometry)
         csv_row = {}
         for field in schema:
             if field.name == geom_key:

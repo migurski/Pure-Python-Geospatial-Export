@@ -15,8 +15,7 @@ import io
 import itertools
 import tokenize
 
-import geomet
-from geomet import util
+from . import util, InvalidGeoJSONException
 
 """
 Well-Known Text (WKT) is a text-based format for representing geometric objects
@@ -83,7 +82,7 @@ def dumps(obj, decimals=16):
             if len(list(util.flatten_multi_dim(obj['coordinates']))) == 0:
                 return '%s EMPTY' % geom_type.upper()
     except KeyError:
-        raise geomet.InvalidGeoJSONException('Invalid GeoJSON: %s' % obj)
+        raise InvalidGeoJSONException('Invalid GeoJSON: %s' % obj)
 
     result = exporter(obj, decimals)
     # Try to get the SRID from `meta.srid`

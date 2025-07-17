@@ -33,7 +33,7 @@ import sys
 
 import click
 
-from geomet import util, wkb, wkt
+from . import util, wkb, wkt
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

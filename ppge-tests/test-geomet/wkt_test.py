@@ -17,10 +17,10 @@ except ImportError:
     import io
     StringIO = io
 
-import geomet
 import unittest
 
-from geomet import wkt
+from ppge import geomet
+from ppge.geomet import wkt
 
 
 WKT = {}

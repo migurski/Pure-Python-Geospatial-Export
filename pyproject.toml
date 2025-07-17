@@ -5,12 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "Pure-Python-Geospatial-Export"
 version = "0.1.0"
-dependencies = [
-    "geomet==1.1.0",
-]
 
 [project.optional-dependencies]
 test = [
+    "click==8.2.1",
     "geopandas==1.0.1",
     "py==1.11.0",
     "pytest>=3.7",

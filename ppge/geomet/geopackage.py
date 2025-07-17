@@ -14,12 +14,12 @@
 
 import struct as _struct
 
-from geomet.util import (
+from .util import (
     as_bin_str as _as_bin_str,
     take as _take,
     endian_token as _endian_token
 )
-from geomet import wkb as _wkb
+from . import wkb as _wkb
 
 
 def dump(obj, dest_file, big_endian=True):

@@ -12,13 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from geomet.esri import _extract_geojson_srid
-from geomet import InvalidGeoJSONException
-from geomet import esri
 import os
 import json
 import tempfile
 import unittest
+
+from ppge.geomet import esri, InvalidGeoJSONException
+from ppge.geomet.esri import _extract_geojson_srid
+
 
 esri_json_pt = {"x": 25282, "y": 43770, "spatialReference": {"wkid": 3857}}
 esri_json_mpt = {

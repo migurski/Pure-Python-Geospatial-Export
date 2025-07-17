@@ -14,10 +14,10 @@
 import binascii
 import struct
 
-from geomet.util import block_splitter
-from geomet.util import take
-from geomet.util import as_bin_str
-from geomet.util import flatten_multi_dim
+from .util import block_splitter
+from .util import take
+from .util import as_bin_str
+from .util import flatten_multi_dim
 from itertools import chain
 
 """

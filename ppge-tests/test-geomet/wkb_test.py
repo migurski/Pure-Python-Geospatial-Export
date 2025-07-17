@@ -13,7 +13,7 @@
 #  limitations under the License.
 import unittest
 
-from geomet import wkb
+from ppge.geomet import wkb
 
 
 class WKBTestCase(unittest.TestCase):

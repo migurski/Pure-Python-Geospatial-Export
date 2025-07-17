@@ -13,7 +13,7 @@
 #  limitations under the License.
 import unittest
 
-from geomet import util
+from ppge.geomet import util
 
 
 class PointRoundingTestCase(unittest.TestCase):

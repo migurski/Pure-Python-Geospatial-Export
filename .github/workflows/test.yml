@@ -46,4 +46,4 @@ jobs:
 
     - name: Run tests
       run: |
-        python -m unittest ppge-tests/test-*.py -v 
+        python -m unittest ppge-tests/test-*.py ppge-tests/test-geomet/*.py -v 
