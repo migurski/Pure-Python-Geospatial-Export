@@ -169,37 +169,50 @@ def export_to_geojson_from_rows(
 def export_to_csv_from_rows(
     schema: list[Field],
     rows: typing.Iterator[dict[str, typing.Any]],
-    output_path: str,
+    csvfile: typing.IO[bytes],
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
+    """
+    Export row iterator to CSV format with WKT geometry column using provided schema.
+    Args:
+        schema: List of Field instances defining output fields
+        rows: Iterator yielding dictionaries with geometry and other data
+        csvfile: Writable bytes file-like object
+        geom_key: Key for the geometry field in the row dictionary
+        geom_format: Format of geometry data (WKT or GeoJSON)
+    """
     converter = _get_record_converter(schema)
     existing_columns = {field.name for field in schema}
     geometry_column = _get_geometry_column_name(existing_columns)
     fieldnames = [field.name for field in schema if field.name != geom_key]
     fieldnames.append(geometry_column)
-    with open(output_path, "w", newline="") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            geometry = row[geom_key]
-            if geom_format == GeometryFormat.GEOJSON:
-                if isinstance(geometry, str):
-                    geometry = json.loads(geometry)
+    # csvfile is a bytes file-like object, so wrap it for text
+    import io
+    textfile = io.TextIOWrapper(csvfile, encoding="utf-8", newline="")
+    writer = csv.DictWriter(textfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        geometry = row[geom_key]
+        if geom_format == GeometryFormat.GEOJSON:
+            if isinstance(geometry, str):
+                geometry = json.loads(geometry)
+            geometry = geomet.wkt.dumps(geometry)
+        else:
+            if not isinstance(geometry, str):
                 geometry = geomet.wkt.dumps(geometry)
-            else:
-                if not isinstance(geometry, str):
-                    geometry = geomet.wkt.dumps(geometry)
-            csv_row = {}
-            for field in schema:
-                if field.name == geom_key:
-                    continue
-                try:
-                    csv_row[field.name] = converter[field.name](row.get(field.name))
-                except Exception as e:
-                    raise ValueError(f"Field '{field.name}' conversion error: {e}")
-            csv_row[geometry_column] = geometry
-            writer.writerow(csv_row)
+        csv_row = {}
+        for field in schema:
+            if field.name == geom_key:
+                continue
+            try:
+                csv_row[field.name] = converter[field.name](row.get(field.name))
+            except Exception as e:
+                raise ValueError(f"Field '{field.name}' conversion error: {e}")
+        csv_row[geometry_column] = geometry
+        writer.writerow(csv_row)
+    textfile.flush()
+    textfile.detach()  # Prevent closing the underlying BytesIO buffer
 
 
 def process_bigquery_rows_to_shapefile(
@@ -259,26 +272,26 @@ def process_snowflake_rows_to_geojson(
 
 
 def process_bigquery_rows_to_csv(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], csvfile: typing.IO[bytes]
 ) -> None:
     """
     Process BigQuery row iterator and export to CSV with WKT geometry.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'geom' and other fields
-        output_path: Path for output CSV file
+        csvfile: Writable bytes file-like object
     """
-    export_to_csv_from_rows(schema, rows, output_path, "geom", GeometryFormat.WKT)
+    export_to_csv_from_rows(schema, rows, csvfile, "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_csv(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], csvfile: typing.IO[bytes]
 ) -> None:
     """
     Process Snowflake row iterator and export to CSV with WKT geometry.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'GEOM' and other fields
-        output_path: Path for output CSV file
+        csvfile: Writable bytes file-like object
     """
-    export_to_csv_from_rows(schema, rows, output_path, "GEOM", GeometryFormat.GEOJSON)
+    export_to_csv_from_rows(schema, rows, csvfile, "GEOM", GeometryFormat.GEOJSON)
