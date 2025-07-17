@@ -10,7 +10,6 @@ import json
 import typing
 
 import geomet.wkt
-
 from . import pyshp
 
 
@@ -95,24 +94,37 @@ def _get_record_converter(schema: list[Field]) -> dict[str, typing.Callable]:
 def export_to_shapefile_from_rows(
     schema: list[Field],
     rows: typing.Iterator[dict[str, typing.Any]],
-    output_path: str,
+    shp: typing.IO[bytes],
+    shx: typing.IO[bytes],
+    dbf: typing.IO[bytes],
+    prj: typing.IO[bytes],
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
+    """
+    Export row iterator to Shapefile format using provided schema.
+    Args:
+        schema: List of Field instances defining output fields
+        rows: Iterator yielding dictionaries with geometry and other data
+        shp, shx, dbf: Writable bytes file-like objects for .shp, .shx, .dbf
+        prj: Writable bytes file-like object for .prj
+        geom_key: Key for the geometry field in the row dictionary
+        geom_format: Format of geometry data (WKT or GeoJSON)
+    """
     converter = _get_record_converter(schema)
-    with pyshp.Writer(f"{output_path}.shp", shapeType=5) as shp:
+    with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=5) as shp_writer:
         for field in schema:
             if field.name != geom_key:
                 if field.type == FieldType.STR:
-                    shp.field(field.name, "C")
+                    shp_writer.field(field.name, "C")
                 elif field.type == FieldType.INT:
-                    shp.field(field.name, "N")
+                    shp_writer.field(field.name, "N")
                 elif field.type == FieldType.FLOAT:
-                    shp.field(field.name, "F")
+                    shp_writer.field(field.name, "F")
                 elif field.type == FieldType.BOOL:
-                    shp.field(field.name, "L")
+                    shp_writer.field(field.name, "L")
                 else:
-                    shp.field(field.name, "C")
+                    shp_writer.field(field.name, "C")
         for row in rows:
             geometry = row[geom_key]
             if geom_format == GeometryFormat.WKT:
@@ -127,12 +139,12 @@ def export_to_shapefile_from_rows(
                     record[field.name] = converter[field.name](row.get(field.name))
                 except Exception as e:
                     raise ValueError(f"Field '{field.name}' conversion error: {e}")
-            shp.record(**record)
-            shp.poly(coords)
-    with open(f"{output_path}.prj", "w") as prj:
-        prj.write(
-            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
-        )
+            shp_writer.record(**record)
+            shp_writer.poly(coords)
+    # Write projection file
+    prj.write(
+        b'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
+    )
 
 
 def export_to_geojson_from_rows(
@@ -228,31 +240,33 @@ def export_to_csv_from_rows(
 
 
 def process_bigquery_rows_to_shapefile(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]],
+    shp: typing.IO[bytes], shx: typing.IO[bytes], dbf: typing.IO[bytes], prj: typing.IO[bytes]
 ) -> None:
     """
     Process BigQuery row iterator and export to Shapefile.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'geom' and other fields
-        output_path: Path for output Shapefile (without extension)
+        shp, shx, dbf: Writable bytes file-like objects for .shp, .shx, .dbf
+        prj: Writable bytes file-like object for .prj
     """
-    export_to_shapefile_from_rows(schema, rows, output_path, "geom", GeometryFormat.WKT)
+    export_to_shapefile_from_rows(schema, rows, shp, shx, dbf, prj, "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_shapefile(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]],
+    shp: typing.IO[bytes], shx: typing.IO[bytes], dbf: typing.IO[bytes], prj: typing.IO[bytes]
 ) -> None:
     """
     Process Snowflake row iterator and export to Shapefile.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'GEOM' and other fields
-        output_path: Path for output Shapefile (without extension)
+        shp, shx, dbf: Writable bytes file-like objects for .shp, .shx, .dbf
+        prj: Writable bytes file-like object for .prj
     """
-    export_to_shapefile_from_rows(
-        schema, rows, output_path, "GEOM", GeometryFormat.GEOJSON
-    )
+    export_to_shapefile_from_rows(schema, rows, shp, shx, dbf, prj, "GEOM", GeometryFormat.GEOJSON)
 
 
 def process_bigquery_rows_to_geojson(

@@ -153,35 +153,23 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_bigquery_rows")
         schema = [
             Field("geom", FieldType.GEOG, False),
             Field("name", FieldType.STR, False),
         ]
-        ppge.process_bigquery_rows_to_shapefile(schema, rows, output_path)
-
-        # Verify files were created (.shp, .shx, .dbf, .prj)
-        shp_file = f"{output_path}.shp"
-        shx_file = f"{output_path}.shx"
-        dbf_file = f"{output_path}.dbf"
-        prj_file = f"{output_path}.prj"
-
-        self.assertTrue(os.path.exists(shp_file))
-        self.assertTrue(os.path.exists(shx_file))
-        self.assertTrue(os.path.exists(dbf_file))
-        self.assertTrue(os.path.exists(prj_file))
-
-        # Verify files have content
-        self.assertGreater(os.path.getsize(shp_file), 0)
-        self.assertGreater(os.path.getsize(shx_file), 0)
-        self.assertGreater(os.path.getsize(dbf_file), 0)
-        self.assertGreater(os.path.getsize(prj_file), 0)
-
-        # Validate the exported data using geopandas
+        shp_buf = io.BytesIO()
+        shx_buf = io.BytesIO()
+        dbf_buf = io.BytesIO()
+        prj_buf = io.BytesIO()
+        ppge.process_bigquery_rows_to_shapefile(schema, rows, shp_buf, shx_buf, dbf_buf, prj_buf)
+        # Save buffers to files for geopandas
+        base = os.path.join(self.temp_dir, "test_bigquery_rows")
+        for ext, buf in zip(["shp", "shx", "dbf", "prj"], [shp_buf, shx_buf, dbf_buf, prj_buf]):
+            with open(f"{base}.{ext}", "wb") as f:
+                buf.seek(0)
+                f.write(buf.read())
         import geopandas
-
-        gdf = geopandas.read_file(shp_file)
+        gdf = geopandas.read_file(f"{base}.shp")
         self.validate_exported_data(gdf, "name")
 
     def test_snowflake_rows_to_shapefile(self):
@@ -190,35 +178,22 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_snowflake_rows")
         schema = [
             Field("GEOM", FieldType.GEOG, False),
             Field("NAME", FieldType.STR, False),
         ]
-        ppge.process_snowflake_rows_to_shapefile(schema, rows, output_path)
-
-        # Verify files were created (.shp, .shx, .dbf, .prj)
-        shp_file = f"{output_path}.shp"
-        shx_file = f"{output_path}.shx"
-        dbf_file = f"{output_path}.dbf"
-        prj_file = f"{output_path}.prj"
-
-        self.assertTrue(os.path.exists(shp_file))
-        self.assertTrue(os.path.exists(shx_file))
-        self.assertTrue(os.path.exists(dbf_file))
-        self.assertTrue(os.path.exists(prj_file))
-
-        # Verify files have content
-        self.assertGreater(os.path.getsize(shp_file), 0)
-        self.assertGreater(os.path.getsize(shx_file), 0)
-        self.assertGreater(os.path.getsize(dbf_file), 0)
-        self.assertGreater(os.path.getsize(prj_file), 0)
-
-        # Validate the exported data using geopandas
+        shp_buf = io.BytesIO()
+        shx_buf = io.BytesIO()
+        dbf_buf = io.BytesIO()
+        prj_buf = io.BytesIO()
+        ppge.process_snowflake_rows_to_shapefile(schema, rows, shp_buf, shx_buf, dbf_buf, prj_buf)
+        base = os.path.join(self.temp_dir, "test_snowflake_rows")
+        for ext, buf in zip(["shp", "shx", "dbf", "prj"], [shp_buf, shx_buf, dbf_buf, prj_buf]):
+            with open(f"{base}.{ext}", "wb") as f:
+                buf.seek(0)
+                f.write(buf.read())
         import geopandas
-
-        gdf = geopandas.read_file(shp_file)
+        gdf = geopandas.read_file(f"{base}.shp")
         self.validate_exported_data(gdf, "NAME")
 
     def test_bigquery_rows_to_geojson(self):
@@ -286,13 +261,16 @@ class TestGeospatialExport(unittest.TestCase):
             {"geom": "POINT(0 0)", "name": "Wyoming"},
             {"geom": "POINT(1 1)", "name": "Colorado"},
         ]
-        output_path = os.path.join(self.temp_dir, "test_valueerror_shapefile")
         schema = [
             Field("geom", FieldType.GEOG, False),
             Field("name", FieldType.INT, False),
         ]
+        shp_buf = io.BytesIO()
+        shx_buf = io.BytesIO()
+        dbf_buf = io.BytesIO()
+        prj_buf = io.BytesIO()
         with self.assertRaises(ValueError):
-            ppge.process_bigquery_rows_to_shapefile(schema, rows, output_path)
+            ppge.process_bigquery_rows_to_shapefile(schema, rows, shp_buf, shx_buf, dbf_buf, prj_buf)
 
     def test_geojson_valueerror_on_type(self):
         rows = [
