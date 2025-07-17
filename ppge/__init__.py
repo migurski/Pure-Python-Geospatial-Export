@@ -38,25 +38,6 @@ class Field:
     name: str
     type: FieldType | str
     nullable: bool
-    shapetype: (
-        typing.Literal[
-            pyshp.NULL,
-            pyshp.POINT,
-            pyshp.POLYLINE,
-            pyshp.POLYGON,
-            pyshp.MULTIPOINT,
-            pyshp.POINTZ,
-            pyshp.POLYLINEZ,
-            pyshp.POLYGONZ,
-            pyshp.MULTIPOINTZ,
-            pyshp.POINTM,
-            pyshp.POLYLINEM,
-            pyshp.POLYGONM,
-            pyshp.MULTIPOINTM,
-            pyshp.MULTIPATCH,
-        ]
-        | None
-    )
 
 
 def _get_geometry_column_name(existing_columns: set) -> str:
@@ -113,6 +94,25 @@ def _get_record_converter(schema: list[Field]) -> dict[str, typing.Callable]:
 
 def export_to_shapefile_from_rows(
     schema: list[Field],
+    shapetype: (
+        typing.Literal[
+            pyshp.NULL,
+            pyshp.POINT,
+            pyshp.POLYLINE,
+            pyshp.POLYGON,
+            pyshp.MULTIPOINT,
+            pyshp.POINTZ,
+            pyshp.POLYLINEZ,
+            pyshp.POLYGONZ,
+            pyshp.MULTIPOINTZ,
+            pyshp.POINTM,
+            pyshp.POLYLINEM,
+            pyshp.POLYGONM,
+            pyshp.MULTIPOINTM,
+            pyshp.MULTIPATCH,
+        ]
+        | None
+    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -132,8 +132,7 @@ def export_to_shapefile_from_rows(
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
     converter = _get_record_converter(schema)
-    gfield = [f for f in schema if f.type in (FieldType.GEOM, FieldType.GEOG)][0]
-    with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=gfield.shapetype) as shpfile:
+    with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=shapetype) as shpfile:
         for field in schema:
             if field.name != geom_key:
                 if field.type == FieldType.STR:
@@ -260,6 +259,25 @@ def export_to_csv_from_rows(
 
 def process_bigquery_rows_to_shapefile(
     schema: list[Field],
+    shapetype: (
+        typing.Literal[
+            pyshp.NULL,
+            pyshp.POINT,
+            pyshp.POLYLINE,
+            pyshp.POLYGON,
+            pyshp.MULTIPOINT,
+            pyshp.POINTZ,
+            pyshp.POLYLINEZ,
+            pyshp.POLYGONZ,
+            pyshp.MULTIPOINTZ,
+            pyshp.POINTM,
+            pyshp.POLYLINEM,
+            pyshp.POLYGONM,
+            pyshp.MULTIPOINTM,
+            pyshp.MULTIPATCH,
+        ]
+        | None
+    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -275,12 +293,31 @@ def process_bigquery_rows_to_shapefile(
         prj: Writable bytes file-like object for .prj
     """
     export_to_shapefile_from_rows(
-        schema, rows, shp, shx, dbf, prj, "geom", GeometryFormat.WKT
+        schema, shapetype, rows, shp, shx, dbf, prj, "geom", GeometryFormat.WKT
     )
 
 
 def process_snowflake_rows_to_shapefile(
     schema: list[Field],
+    shapetype: (
+        typing.Literal[
+            pyshp.NULL,
+            pyshp.POINT,
+            pyshp.POLYLINE,
+            pyshp.POLYGON,
+            pyshp.MULTIPOINT,
+            pyshp.POINTZ,
+            pyshp.POLYLINEZ,
+            pyshp.POLYGONZ,
+            pyshp.MULTIPOINTZ,
+            pyshp.POINTM,
+            pyshp.POLYLINEM,
+            pyshp.POLYGONM,
+            pyshp.MULTIPOINTM,
+            pyshp.MULTIPATCH,
+        ]
+        | None
+    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -296,7 +333,7 @@ def process_snowflake_rows_to_shapefile(
         prj: Writable bytes file-like object for .prj
     """
     export_to_shapefile_from_rows(
-        schema, rows, shp, shx, dbf, prj, "GEOM", GeometryFormat.GEOJSON
+        schema, shapetype, rows, shp, shx, dbf, prj, "GEOM", GeometryFormat.GEOJSON
     )
 
 
