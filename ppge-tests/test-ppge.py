@@ -76,17 +76,17 @@ class TestGeospatialExport(unittest.TestCase):
         colorado_point = shapely.Point(-105.8, 39.1)
         self.assertTrue(colorado_row.geometry.contains(colorado_point))
 
-    def validate_geojson_data(self, geojson_path, name_column="name"):
+    def validate_geojson_data(self, buf, name_column="name"):
         """
         Validate that the exported GeoJSON data contains the expected states and geometry.
 
         Args:
-            geojson_path: Path to the GeoJSON file
+            buf: BytesIO buffer containing GeoJSON data
             name_column: Name of the column containing state names
         """
-        # Read GeoJSON file
-        with open(geojson_path, "r") as f:
-            geojson_data = json.load(f)
+        buf.seek(0)
+        text = buf.read().decode("utf-8")
+        geojson_data = json.loads(text)
 
         # Check that it's a FeatureCollection
         self.assertEqual(geojson_data["type"], "FeatureCollection")
@@ -227,20 +227,14 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_bigquery_rows.geojson")
         schema = [
             Field("geom", FieldType.GEOG, False),
             Field("name", FieldType.STR, False),
         ]
-        ppge.process_bigquery_rows_to_geojson(schema, rows, output_path)
-
-        # Verify file was created
-        self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 0)
-
-        # Validate the exported data using GeoJSON validation
-        self.validate_geojson_data(output_path, "name")
+        buf = io.BytesIO()
+        ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_geojson_data(buf, "name")
 
     def test_snowflake_rows_to_geojson(self):
         """Test Snowflake CSV row iterator to GeoJSON export."""
@@ -248,20 +242,14 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
-
-        output_path = os.path.join(self.temp_dir, "test_snowflake_rows.geojson")
         schema = [
             Field("GEOM", FieldType.GEOG, False),
             Field("NAME", FieldType.STR, False),
         ]
-        ppge.process_snowflake_rows_to_geojson(schema, rows, output_path)
-
-        # Verify file was created
-        self.assertTrue(os.path.exists(output_path))
-        self.assertGreater(os.path.getsize(output_path), 0)
-
-        # Validate the exported data using GeoJSON validation
-        self.validate_geojson_data(output_path, "NAME")
+        buf = io.BytesIO()
+        ppge.process_snowflake_rows_to_geojson(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_geojson_data(buf, "NAME")
 
     def test_bigquery_rows_to_csv(self):
         """Test BigQuery CSV row iterator to CSV export with WKT geometry."""
@@ -311,13 +299,13 @@ class TestGeospatialExport(unittest.TestCase):
             {"geom": "POINT(0 0)", "name": "Wyoming"},
             {"geom": "POINT(1 1)", "name": "Colorado"},
         ]
-        output_path = os.path.join(self.temp_dir, "test_valueerror.geojson")
         schema = [
             Field("geom", FieldType.GEOG, False),
             Field("name", FieldType.INT, False),
         ]
+        buf = io.BytesIO()
         with self.assertRaises(ValueError):
-            ppge.process_bigquery_rows_to_geojson(schema, rows, output_path)
+            ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
 
     def test_csv_valueerror_on_type(self):
         rows = [

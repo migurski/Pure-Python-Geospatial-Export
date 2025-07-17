@@ -138,10 +138,19 @@ def export_to_shapefile_from_rows(
 def export_to_geojson_from_rows(
     schema: list[Field],
     rows: typing.Iterator[dict[str, typing.Any]],
-    output_path: str,
+    geojsonfile: typing.IO[bytes],
     geom_key: str,
     geom_format: GeometryFormat,
 ) -> None:
+    """
+    Export row iterator to GeoJSON format using provided schema.
+    Args:
+        schema: List of Field instances defining output fields
+        rows: Iterator yielding dictionaries with geometry and other data
+        geojsonfile: Writable bytes file-like object
+        geom_key: Key for the geometry field in the row dictionary
+        geom_format: Format of geometry data (WKT or GeoJSON)
+    """
     converter = _get_record_converter(schema)
     geojson = {"type": "FeatureCollection", "features": []}
     for row in rows:
@@ -162,8 +171,11 @@ def export_to_geojson_from_rows(
                 raise ValueError(f"Field '{field.name}' conversion error: {e}")
         feature = {"type": "Feature", "geometry": geometry, "properties": properties}
         geojson["features"].append(feature)
-    with open(output_path, "w") as f:
-        json.dump(geojson, f, indent=2)
+    import io
+    textfile = io.TextIOWrapper(geojsonfile, encoding="utf-8")
+    json.dump(geojson, textfile, indent=2)
+    textfile.flush()
+    textfile.detach()  # Prevent closing the underlying BytesIO buffer
 
 
 def export_to_csv_from_rows(
@@ -244,31 +256,29 @@ def process_snowflake_rows_to_shapefile(
 
 
 def process_bigquery_rows_to_geojson(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], geojsonfile: typing.IO[bytes]
 ) -> None:
     """
     Process BigQuery row iterator and export to GeoJSON.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'geom' and other fields
-        output_path: Path for output GeoJSON file
+        geojsonfile: Writable bytes file-like object
     """
-    export_to_geojson_from_rows(schema, rows, output_path, "geom", GeometryFormat.WKT)
+    export_to_geojson_from_rows(schema, rows, geojsonfile, "geom", GeometryFormat.WKT)
 
 
 def process_snowflake_rows_to_geojson(
-    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], output_path: str
+    schema: list[Field], rows: typing.Iterator[dict[str, typing.Any]], geojsonfile: typing.IO[bytes]
 ) -> None:
     """
     Process Snowflake row iterator and export to GeoJSON.
-
     Args:
+        schema: List of Field instances defining output fields
         rows: Iterator yielding dictionaries with 'GEOM' and other fields
-        output_path: Path for output GeoJSON file
+        geojsonfile: Writable bytes file-like object
     """
-    export_to_geojson_from_rows(
-        schema, rows, output_path, "GEOM", GeometryFormat.GEOJSON
-    )
+    export_to_geojson_from_rows(schema, rows, geojsonfile, "GEOM", GeometryFormat.GEOJSON)
 
 
 def process_bigquery_rows_to_csv(
