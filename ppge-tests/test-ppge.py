@@ -107,20 +107,20 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertEqual(colorado_feature["geometry"]["type"], "Polygon")
 
     def validate_csv_data(
-        self, csv_path, name_column="name", geometry_column="geometry"
+        self, buf, name_column="name", geometry_column="geometry"
     ):
         """
         Validate that the exported CSV data contains the expected states and WKT geometry.
 
         Args:
-            csv_path: Path to the CSV file
+            buf: BytesIO buffer containing CSV data
             name_column: Name of the column containing state names
             geometry_column: Name of the column containing WKT geometry
         """
-        # Read CSV file
-        with open(csv_path, "r", newline="") as csvfile:
-            reader = csv.DictReader(csvfile)
-            rows = list(reader)
+        buf.seek(0)
+        text = buf.read().decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        rows = list(reader)
 
         # Check that we have exactly 2 rows
         self.assertEqual(len(rows), 2)
@@ -276,16 +276,7 @@ class TestGeospatialExport(unittest.TestCase):
         buf = io.BytesIO()
         ppge.process_bigquery_rows_to_csv(schema, rows, buf)
         self.assertGreater(len(buf.getvalue()), 0)
-        # Validate the exported data using CSV validation
-        buf.seek(0)
-        text = buf.read().decode("utf-8")
-        reader = csv.DictReader(io.StringIO(text))
-        rows = list(reader)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["name"], "Wyoming")
-        self.assertTrue(rows[0]["geometry"].startswith("POLYGON"))
-        self.assertEqual(rows[1]["name"], "Colorado")
-        self.assertTrue(rows[1]["geometry"].startswith("POLYGON"))
+        self.validate_csv_data(buf, "name", "geometry")
 
     def test_snowflake_rows_to_csv(self):
         """Test Snowflake CSV row iterator to CSV export with WKT geometry."""
@@ -300,15 +291,7 @@ class TestGeospatialExport(unittest.TestCase):
         buf = io.BytesIO()
         ppge.process_snowflake_rows_to_csv(schema, rows, buf)
         self.assertGreater(len(buf.getvalue()), 0)
-        buf.seek(0)
-        text = buf.read().decode("utf-8")
-        reader = csv.DictReader(io.StringIO(text))
-        rows = list(reader)
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["NAME"], "Wyoming")
-        self.assertTrue(rows[0]["geometry"].startswith("POLYGON"))
-        self.assertEqual(rows[1]["NAME"], "Colorado")
-        self.assertTrue(rows[1]["geometry"].startswith("POLYGON"))
+        self.validate_csv_data(buf, "NAME", "geometry")
 
     def test_shapefile_valueerror_on_type(self):
         rows = [
