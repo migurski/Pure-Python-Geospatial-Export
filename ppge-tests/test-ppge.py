@@ -15,6 +15,12 @@ import shapely
 import ppge
 
 
+BIGQUERY_POLY_CSV = "wy-co-wkt-bigquery.csv"
+SNOWFLAKE_POLY_CSV = "wy-co-geojson-snowflake.csv"
+BIGQUERY_POINT_CSV = "denver-cheyenne-wkt-bigquery.csv"
+SNOWFLAKE_POINT_CSV = "denver-cheyenne-geojson-snowflake.csv"
+
+
 def csv_row_iterator(csv_path: str):
     """
     Generic iterator that yields row dictionaries from a CSV file.
@@ -32,10 +38,6 @@ def csv_row_iterator(csv_path: str):
 class TestGeospatialExport(unittest.TestCase):
     """Test cases for geospatial export functionality using row iterators."""
 
-    def setUp(self):
-        self.bigquery_csv = "wy-co-wkt-bigquery.csv"
-        self.snowflake_csv = "wy-co-geojson-snowflake.csv"
-
     def validate_exported_data(self, gdf, name_column="name"):
         """
         Validate that the exported data contains the expected states and geometry.
@@ -51,17 +53,17 @@ class TestGeospatialExport(unittest.TestCase):
         wyoming_row = gdf.iloc[0]
         self.assertEqual(wyoming_row[name_column], "Wyoming")
 
-        # Check that Wyoming polygon contains the specified point
-        wyoming_point = shapely.Point(-107.5, 43.0)
-        self.assertTrue(wyoming_row.geometry.contains(wyoming_point))
+        # Check that Wyoming geometry intersects Cheyenne
+        cheyenne_poly = shapely.Point(-104.8, 41.1).buffer(1)
+        self.assertTrue(wyoming_row.geometry.intersects(cheyenne_poly))
 
         # Check second row (Colorado)
         colorado_row = gdf.iloc[1]
         self.assertEqual(colorado_row[name_column], "Colorado")
 
-        # Check that Colorado polygon contains the specified point
-        colorado_point = shapely.Point(-105.8, 39.1)
-        self.assertTrue(colorado_row.geometry.contains(colorado_point))
+        # Check that Colorado geometry intersects Denver
+        denver_poly = shapely.Point(-105.0, 39.7).buffer(1)
+        self.assertTrue(colorado_row.geometry.intersects(denver_poly))
 
     def validate_geojson_data(self, buf, name_column="name"):
         """
@@ -85,13 +87,13 @@ class TestGeospatialExport(unittest.TestCase):
         wyoming_feature = geojson_data["features"][0]
         self.assertEqual(wyoming_feature["properties"][name_column], "Wyoming")
         self.assertEqual(wyoming_feature["type"], "Feature")
-        self.assertEqual(wyoming_feature["geometry"]["type"], "Polygon")
+        self.assertIn(wyoming_feature["geometry"]["type"], ("Point", "Polygon"))
 
         # Check second feature (Colorado)
         colorado_feature = geojson_data["features"][1]
         self.assertEqual(colorado_feature["properties"][name_column], "Colorado")
         self.assertEqual(colorado_feature["type"], "Feature")
-        self.assertEqual(colorado_feature["geometry"]["type"], "Polygon")
+        self.assertIn(colorado_feature["geometry"]["type"], ("Point", "Polygon"))
 
     def validate_csv_data(self, buf, name_column="name", geometry_column="geometry"):
         """
@@ -114,27 +116,27 @@ class TestGeospatialExport(unittest.TestCase):
         wyoming_row = rows[0]
         self.assertEqual(wyoming_row[name_column], "Wyoming")
         self.assertIn(geometry_column, wyoming_row)
-        self.assertTrue(wyoming_row[geometry_column].startswith("POLYGON"))
+        self.assertTrue(wyoming_row[geometry_column].startswith("PO"))
 
-        # Check that Wyoming polygon contains the specified point
+        # Check that Wyoming geometry intersects Cheyenne
         wyoming_geom = shapely.from_wkt(wyoming_row[geometry_column])
-        wyoming_point = shapely.Point(-107.5, 43.0)
-        self.assertTrue(wyoming_geom.contains(wyoming_point))
+        cheyenne_poly = shapely.Point(-104.8, 41.1).buffer(1)
+        self.assertTrue(wyoming_geom.intersects(cheyenne_poly))
 
         # Check second row (Colorado)
         colorado_row = rows[1]
         self.assertEqual(colorado_row[name_column], "Colorado")
         self.assertIn(geometry_column, colorado_row)
-        self.assertTrue(colorado_row[geometry_column].startswith("POLYGON"))
+        self.assertTrue(colorado_row[geometry_column].startswith("PO"))
 
-        # Check that Colorado polygon contains the specified point
+        # Check that Colorado geometry intersects Denver
         colorado_geom = shapely.from_wkt(colorado_row[geometry_column])
-        colorado_point = shapely.Point(-105.8, 39.1)
-        self.assertTrue(colorado_geom.contains(colorado_point))
+        denver_poly = shapely.Point(-105.0, 39.7).buffer(1)
+        self.assertTrue(colorado_geom.intersects(denver_poly))
 
     def test_bigquery_rows_to_shapefile(self):
         """Test BigQuery CSV row iterator to Shapefile export."""
-        rows = list(csv_row_iterator(self.bigquery_csv))
+        rows = list(csv_row_iterator(BIGQUERY_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
@@ -162,7 +164,7 @@ class TestGeospatialExport(unittest.TestCase):
 
     def test_snowflake_rows_to_shapefile(self):
         """Test Snowflake CSV row iterator to Shapefile export."""
-        rows = list(csv_row_iterator(self.snowflake_csv))
+        rows = list(csv_row_iterator(SNOWFLAKE_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
@@ -187,9 +189,9 @@ class TestGeospatialExport(unittest.TestCase):
             gdf = geopandas.read_file(f"{base}.shp")
             self.validate_exported_data(gdf, "NAME")
 
-    def test_bigquery_rows_to_geojson(self):
+    def test_bigquery_polygon_rows_to_geojson(self):
         """Test BigQuery CSV row iterator to GeoJSON export."""
-        rows = list(csv_row_iterator(self.bigquery_csv))
+        rows = list(csv_row_iterator(BIGQUERY_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
@@ -202,9 +204,24 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(len(buf.getvalue()), 0)
         self.validate_geojson_data(buf, "name")
 
-    def test_snowflake_rows_to_geojson(self):
+    def test_bigquery_point_rows_to_geojson(self):
+        """Test BigQuery CSV row iterator to GeoJSON export."""
+        rows = list(csv_row_iterator(BIGQUERY_POINT_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("geom", rows[0])
+        self.assertIn("name", rows[0])
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+        ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_geojson_data(buf, "name")
+
+    def test_snowflake_polygon_rows_to_geojson(self):
         """Test Snowflake CSV row iterator to GeoJSON export."""
-        rows = list(csv_row_iterator(self.snowflake_csv))
+        rows = list(csv_row_iterator(SNOWFLAKE_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
@@ -217,9 +234,24 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(len(buf.getvalue()), 0)
         self.validate_geojson_data(buf, "NAME")
 
-    def test_bigquery_rows_to_csv(self):
+    def test_snowflake_point_rows_to_geojson(self):
+        """Test Snowflake CSV row iterator to GeoJSON export."""
+        rows = list(csv_row_iterator(SNOWFLAKE_POINT_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("GEOM", rows[0])
+        self.assertIn("NAME", rows[0])
+        schema = [
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
+            ppge.Field("NAME", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+        ppge.process_snowflake_rows_to_geojson(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_geojson_data(buf, "NAME")
+
+    def test_bigquery_polygon_rows_to_csv(self):
         """Test BigQuery CSV row iterator to CSV export with WKT geometry."""
-        rows = list(csv_row_iterator(self.bigquery_csv))
+        rows = list(csv_row_iterator(BIGQUERY_POLY_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("geom", rows[0])
         self.assertIn("name", rows[0])
@@ -232,9 +264,39 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(len(buf.getvalue()), 0)
         self.validate_csv_data(buf, "name", "geometry")
 
-    def test_snowflake_rows_to_csv(self):
+    def test_bigquery_point_rows_to_csv(self):
+        """Test BigQuery CSV row iterator to CSV export with WKT geometry."""
+        rows = list(csv_row_iterator(BIGQUERY_POINT_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("geom", rows[0])
+        self.assertIn("name", rows[0])
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+        ppge.process_bigquery_rows_to_csv(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_csv_data(buf, "name", "geometry")
+
+    def test_snowflake_polygon_rows_to_csv(self):
         """Test Snowflake CSV row iterator to CSV export with WKT geometry."""
-        rows = list(csv_row_iterator(self.snowflake_csv))
+        rows = list(csv_row_iterator(SNOWFLAKE_POLY_CSV))
+        self.assertEqual(len(rows), 2)
+        self.assertIn("GEOM", rows[0])
+        self.assertIn("NAME", rows[0])
+        schema = [
+            ppge.Field("GEOM", ppge.FieldType.GEOG, False),
+            ppge.Field("NAME", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+        ppge.process_snowflake_rows_to_csv(schema, rows, buf)
+        self.assertGreater(len(buf.getvalue()), 0)
+        self.validate_csv_data(buf, "NAME", "geometry")
+
+    def test_snowflake_point_rows_to_csv(self):
+        """Test Snowflake CSV row iterator to CSV export with WKT geometry."""
+        rows = list(csv_row_iterator(SNOWFLAKE_POINT_CSV))
         self.assertEqual(len(rows), 2)
         self.assertIn("GEOM", rows[0])
         self.assertIn("NAME", rows[0])
