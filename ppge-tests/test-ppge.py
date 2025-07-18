@@ -146,7 +146,7 @@ class TestGeospatialExport(unittest.TestCase):
             ppge.Field("name", ppge.FieldType.STR, False),
         ]
         fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
-        ppge.process_bigquery_rows_to_shapefile(schema, ppge.pyshp.POLYGON, rows, *fs)
+        ppge.process_bigquery_rows_to_shapefile(schema, rows, *fs)
         # Save buffers to files for geopandas
         with tempfile.TemporaryDirectory() as temp_dir:
             base = os.path.join(temp_dir, "test_bigquery_rows")
@@ -171,7 +171,7 @@ class TestGeospatialExport(unittest.TestCase):
             ppge.Field("name", ppge.FieldType.STR, False),
         ]
         fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
-        ppge.process_bigquery_rows_to_shapefile(schema, ppge.pyshp.POINT, rows, *fs)
+        ppge.process_bigquery_rows_to_shapefile(schema, rows, *fs)
         # Save buffers to files for geopandas
         with tempfile.TemporaryDirectory() as temp_dir:
             base = os.path.join(temp_dir, "test_bigquery_rows")
@@ -196,7 +196,7 @@ class TestGeospatialExport(unittest.TestCase):
             ppge.Field("NAME", ppge.FieldType.STR, False),
         ]
         fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
-        ppge.process_snowflake_rows_to_shapefile(schema, ppge.pyshp.POLYGON, rows, *fs)
+        ppge.process_snowflake_rows_to_shapefile(schema, rows, *fs)
         with tempfile.TemporaryDirectory() as temp_dir:
             base = os.path.join(temp_dir, "test_snowflake_rows")
             for ext, buf in zip(["shp", "shx", "dbf", "prj"], fs):
@@ -220,7 +220,7 @@ class TestGeospatialExport(unittest.TestCase):
             ppge.Field("NAME", ppge.FieldType.STR, False),
         ]
         fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
-        ppge.process_snowflake_rows_to_shapefile(schema, ppge.pyshp.POINT, rows, *fs)
+        ppge.process_snowflake_rows_to_shapefile(schema, rows, *fs)
         with tempfile.TemporaryDirectory() as temp_dir:
             base = os.path.join(temp_dir, "test_snowflake_rows")
             for ext, buf in zip(["shp", "shx", "dbf", "prj"], fs):
@@ -358,9 +358,16 @@ class TestGeospatialExport(unittest.TestCase):
         rows = [
             {"geom": "POINT(-104.8 41.1)", "name": "Cheyenne"},
             {"geom": "POINT(-105.0 39.7)", "name": "Denver"},
+            {
+                "geom": "POLYGON((-109 37, -102 37, -102 41, -109 41, -109 37))",
+                "name": "Colorado",
+            },
+            {"geom": None, "name": "Null Geometry"},
         ]
         schema = [
-            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field(
+                "geom", ppge.FieldType.GEOG, True
+            ),  # Make nullable to allow null geometry
             ppge.Field("name", ppge.FieldType.STR, False),
         ]
 
@@ -373,7 +380,6 @@ class TestGeospatialExport(unittest.TestCase):
         # Export to shapefile
         ppge.export_to_shapefile_from_rows(
             schema,
-            ppge.pyshp.POINT,
             rows,
             shp_buf,
             shx_buf,
@@ -397,8 +403,8 @@ class TestGeospatialExport(unittest.TestCase):
 
             gdf = geopandas.read_file(f"{base}.shp")
 
-            # Validate the exported data
-            self.assertEqual(len(gdf), 2)
+            # Validate the exported data - should have 3 rows (2 points, 1 null, polygon filtered out)
+            self.assertEqual(len(gdf), 3)
 
             # Check first row (Cheyenne)
             cheyenne_row = gdf.iloc[0]
@@ -415,6 +421,11 @@ class TestGeospatialExport(unittest.TestCase):
             # Check that Denver point is at expected location
             denver_point = shapely.Point(-105.0, 39.7)
             self.assertTrue(denver_row.geometry.equals(denver_point))
+
+            # Check third row (Null Geometry)
+            null_row = gdf.iloc[2]
+            self.assertEqual(null_row["name"], "Null Geometry")
+            self.assertTrue(null_row.geometry is None or null_row.geometry.is_empty)
 
     def test_combine_shapefile_parts(self):
         """Test combining shapefile parts into a zip archive."""
@@ -466,7 +477,7 @@ class TestGeospatialExport(unittest.TestCase):
         ]
         fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
         with self.assertRaises(ValueError):
-            ppge.process_bigquery_rows_to_shapefile(schema, ppge.pyshp.POINT, rows, *fs)
+            ppge.process_bigquery_rows_to_shapefile(schema, rows, *fs)
 
     def test_geojson_valueerror_on_type(self):
         rows = [

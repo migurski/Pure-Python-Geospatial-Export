@@ -133,27 +133,47 @@ def combine_shapefile_parts(
                     zip_file.write(chunk)
 
 
+def _determine_shapetype_from_geometry(geometry, geom_format: GeometryFormat) -> int:
+    """
+    Determine the shapetype from geometry data.
+
+    Args:
+        geometry: Geometry data in WKT or GeoJSON format
+        geom_format: Format of the geometry data
+
+    Returns:
+        int: pyshp shapetype constant
+    """
+    if geometry is None:
+        return pyshp.NULL
+
+    if geom_format == GeometryFormat.WKT:
+        if isinstance(geometry, str):
+            geometry = wkt.loads(geometry)
+    else:
+        if isinstance(geometry, str):
+            geometry = json.loads(geometry)
+
+    geom_type = geometry.get("type", "").upper()
+
+    if geom_type == "POINT":
+        return pyshp.POINT
+    elif geom_type == "LINESTRING":
+        return pyshp.POLYLINE
+    elif geom_type == "POLYGON":
+        return pyshp.POLYGON
+    elif geom_type == "MULTIPOINT":
+        return pyshp.MULTIPOINT
+    elif geom_type == "MULTILINESTRING":
+        return pyshp.POLYLINE
+    elif geom_type == "MULTIPOLYGON":
+        return pyshp.POLYGON
+    else:
+        return pyshp.NULL
+
+
 def export_to_shapefile_from_rows(
     schema: list[Field],
-    shapetype: (
-        typing.Literal[
-            pyshp.NULL,
-            pyshp.POINT,
-            pyshp.POLYLINE,
-            pyshp.POLYGON,
-            pyshp.MULTIPOINT,
-            pyshp.POINTZ,
-            pyshp.POLYLINEZ,
-            pyshp.POLYGONZ,
-            pyshp.MULTIPOINTZ,
-            pyshp.POINTM,
-            pyshp.POLYLINEM,
-            pyshp.POLYGONM,
-            pyshp.MULTIPOINTM,
-            pyshp.MULTIPATCH,
-        ]
-        | None
-    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -172,6 +192,17 @@ def export_to_shapefile_from_rows(
         geom_key: Key for the geometry field in the row dictionary
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
+    # Convert rows to list so we can iterate twice
+    rows_list = list(rows)
+
+    # Determine shapetype from first non-null geometry
+    shapetype = pyshp.NULL
+    for row in rows_list:
+        geometry = row.get(geom_key)
+        if geometry is not None:
+            shapetype = _determine_shapetype_from_geometry(geometry, geom_format)
+            break
+
     converter = _get_record_converter(schema)
     with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=shapetype) as shpfile:
         for field in schema:
@@ -186,12 +217,22 @@ def export_to_shapefile_from_rows(
                     shpfile.field(field.name, "L")
                 else:
                     shpfile.field(field.name, "C")
-        for row in rows:
+        for row in rows_list:
             geometry = row[geom_key]
-            if geom_format == GeometryFormat.WKT:
+            if geometry is None:
+                shape = None
+            elif geom_format == GeometryFormat.WKT:
                 shape = wkt.loads(geometry)
             else:
                 shape = json.loads(geometry)
+
+            # Check if geometry type matches the determined shapetype
+            if shape is not None:
+                shape_type = _determine_shapetype_from_geometry(geometry, geom_format)
+                if shape_type != shapetype:
+                    # Skip geometries that don't match the determined type
+                    continue
+
             record = {}
             for field in schema:
                 if field.name == geom_key:
@@ -201,7 +242,10 @@ def export_to_shapefile_from_rows(
                 except Exception as e:
                     raise ValueError(f"Field '{field.name}' conversion error: {e}")
             shpfile.record(**record)
-            shpfile.shape(shape)
+            if shape is not None:
+                shpfile.shape(shape)
+            else:
+                shpfile.null()
     # Write projection file
     prj.write(
         b'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]'
@@ -300,25 +344,6 @@ def export_to_csv_from_rows(
 
 def process_bigquery_rows_to_shapefile(
     schema: list[Field],
-    shapetype: (
-        typing.Literal[
-            pyshp.NULL,
-            pyshp.POINT,
-            pyshp.POLYLINE,
-            pyshp.POLYGON,
-            pyshp.MULTIPOINT,
-            pyshp.POINTZ,
-            pyshp.POLYLINEZ,
-            pyshp.POLYGONZ,
-            pyshp.MULTIPOINTZ,
-            pyshp.POINTM,
-            pyshp.POLYLINEM,
-            pyshp.POLYGONM,
-            pyshp.MULTIPOINTM,
-            pyshp.MULTIPATCH,
-        ]
-        | None
-    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -334,31 +359,12 @@ def process_bigquery_rows_to_shapefile(
         prj: Writable bytes file-like object for .prj
     """
     export_to_shapefile_from_rows(
-        schema, shapetype, rows, shp, shx, dbf, prj, "geom", GeometryFormat.WKT
+        schema, rows, shp, shx, dbf, prj, "geom", GeometryFormat.WKT
     )
 
 
 def process_snowflake_rows_to_shapefile(
     schema: list[Field],
-    shapetype: (
-        typing.Literal[
-            pyshp.NULL,
-            pyshp.POINT,
-            pyshp.POLYLINE,
-            pyshp.POLYGON,
-            pyshp.MULTIPOINT,
-            pyshp.POINTZ,
-            pyshp.POLYLINEZ,
-            pyshp.POLYGONZ,
-            pyshp.MULTIPOINTZ,
-            pyshp.POINTM,
-            pyshp.POLYLINEM,
-            pyshp.POLYGONM,
-            pyshp.MULTIPOINTM,
-            pyshp.MULTIPATCH,
-        ]
-        | None
-    ),
     rows: typing.Iterator[dict[str, typing.Any]],
     shp: typing.IO[bytes],
     shx: typing.IO[bytes],
@@ -374,7 +380,7 @@ def process_snowflake_rows_to_shapefile(
         prj: Writable bytes file-like object for .prj
     """
     export_to_shapefile_from_rows(
-        schema, shapetype, rows, shp, shx, dbf, prj, "GEOM", GeometryFormat.GEOJSON
+        schema, rows, shp, shx, dbf, prj, "GEOM", GeometryFormat.GEOJSON
     )
 
 
