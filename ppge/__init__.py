@@ -113,7 +113,7 @@ def combine_shapefile_parts(
         prj: Readable bytes file-like object containing .prj data
     """
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_archive:
-        # Reset buffers to beginning and write each part
+        # Reset buffers to beginning and stream each part
         for buffer_obj, extension in [
             (shp, ".shp"),
             (shx, ".shx"),
@@ -121,7 +121,17 @@ def combine_shapefile_parts(
             (prj, ".prj"),
         ]:
             buffer_obj.seek(0)
-            zip_archive.writestr(f"{basename}{extension}", buffer_obj.read())
+            # Create ZipInfo for the file
+            zinfo = zipfile.ZipInfo(f"{basename}{extension}")
+            zinfo.compress_type = zipfile.ZIP_DEFLATED
+
+            # Stream the data in chunks
+            with zip_archive.open(zinfo, "w") as zip_file:
+                while True:
+                    chunk = buffer_obj.read(8192)  # 8KB chunks
+                    if not chunk:
+                        break
+                    zip_file.write(chunk)
 
 
 def export_to_shapefile_from_rows(
