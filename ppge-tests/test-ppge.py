@@ -9,6 +9,7 @@ import unittest
 import csv
 import json
 import io
+import zipfile
 
 import shapely
 
@@ -351,6 +352,45 @@ class TestGeospatialExport(unittest.TestCase):
         ppge.process_snowflake_rows_to_csv(schema, rows, buf)
         self.assertGreater(len(buf.getvalue()), 0)
         self.validate_csv_data(buf, "NAME", "geometry")
+
+    def test_combine_shapefile_parts(self):
+        """Test combining shapefile parts into a zip archive."""
+        # Create test data for each shapefile part
+        shp_data = b"test shp data"
+        shx_data = b"test shx data"
+        dbf_data = b"test dbf data"
+        prj_data = b"test prj data"
+
+        # Create buffers with test data
+        shp_buf = io.BytesIO(shp_data)
+        shx_buf = io.BytesIO(shx_data)
+        dbf_buf = io.BytesIO(dbf_data)
+        prj_buf = io.BytesIO(prj_data)
+        zip_buf = io.BytesIO()
+
+        # Combine the parts
+        ppge.combine_shapefile_parts(
+            "test_shapefile", zip_buf, shp_buf, shx_buf, dbf_buf, prj_buf
+        )
+
+        # Verify the zip archive contains all parts
+        zip_buf.seek(0)
+        with zipfile.ZipFile(zip_buf, "r") as zip_archive:
+            # Check that all expected files are present
+            expected_files = [
+                "test_shapefile.shp",
+                "test_shapefile.shx",
+                "test_shapefile.dbf",
+                "test_shapefile.prj",
+            ]
+            actual_files = zip_archive.namelist()
+            self.assertEqual(set(actual_files), set(expected_files))
+
+            # Check that file contents match original data
+            self.assertEqual(zip_archive.read("test_shapefile.shp"), shp_data)
+            self.assertEqual(zip_archive.read("test_shapefile.shx"), shx_data)
+            self.assertEqual(zip_archive.read("test_shapefile.dbf"), dbf_data)
+            self.assertEqual(zip_archive.read("test_shapefile.prj"), prj_data)
 
     def test_shapefile_valueerror_on_type(self):
         rows = [

@@ -9,6 +9,7 @@ import enum
 import io
 import json
 import typing
+import zipfile
 
 from .geomet import wkt
 from . import pyshp
@@ -90,6 +91,37 @@ def _get_record_converter(schema: list[Field]) -> dict[str, typing.Callable]:
             converter[field.name] = lambda val: _complain_if_null(field.name, _cv(val))
 
     return converter
+
+
+def combine_shapefile_parts(
+    basename: str,
+    zip_buffer: typing.IO[bytes],
+    shp: typing.IO[bytes],
+    shx: typing.IO[bytes],
+    dbf: typing.IO[bytes],
+    prj: typing.IO[bytes],
+) -> None:
+    """
+    Combine shapefile parts into a zip archive.
+
+    Args:
+        basename: Base name for the shapefile (without extension)
+        zip_buffer: Writable bytes file-like object for the zip archive
+        shp: Readable bytes file-like object containing .shp data
+        shx: Readable bytes file-like object containing .shx data
+        dbf: Readable bytes file-like object containing .dbf data
+        prj: Readable bytes file-like object containing .prj data
+    """
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_archive:
+        # Reset buffers to beginning and write each part
+        for buffer_obj, extension in [
+            (shp, ".shp"),
+            (shx, ".shx"),
+            (dbf, ".dbf"),
+            (prj, ".prj"),
+        ]:
+            buffer_obj.seek(0)
+            zip_archive.writestr(f"{basename}{extension}", buffer_obj.read())
 
 
 def export_to_shapefile_from_rows(
