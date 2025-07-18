@@ -120,7 +120,6 @@ def combine_shapefile_parts(
             (dbf, ".dbf"),
             (prj, ".prj"),
         ]:
-            buffer_obj.seek(0)
             # Create ZipInfo for the file
             zinfo = zipfile.ZipInfo(f"{basename}{extension}")
             zinfo.compress_type = zipfile.ZIP_DEFLATED
@@ -128,7 +127,7 @@ def combine_shapefile_parts(
             # Stream the data in chunks
             with zip_archive.open(zinfo, "w") as zip_file:
                 while True:
-                    chunk = buffer_obj.read(8192)  # 8KB chunks
+                    chunk = buffer_obj.read(10 * 1024 * 1024)  # 10MB chunks
                     if not chunk:
                         break
                     zip_file.write(chunk)
