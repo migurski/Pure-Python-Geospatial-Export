@@ -353,6 +353,69 @@ class TestGeospatialExport(unittest.TestCase):
         self.assertGreater(len(buf.getvalue()), 0)
         self.validate_csv_data(buf, "NAME", "geometry")
 
+    def test_export_to_shapefile_from_rows_with_literals(self):
+        """Test export_to_shapefile_from_rows with row literals."""
+        rows = [
+            {"geom": "POINT(-104.8 41.1)", "name": "Cheyenne"},
+            {"geom": "POINT(-105.0 39.7)", "name": "Denver"},
+        ]
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+
+        # Create buffers for shapefile parts
+        shp_buf = io.BytesIO()
+        shx_buf = io.BytesIO()
+        dbf_buf = io.BytesIO()
+        prj_buf = io.BytesIO()
+
+        # Export to shapefile
+        ppge.export_to_shapefile_from_rows(
+            schema,
+            ppge.pyshp.POINT,
+            rows,
+            shp_buf,
+            shx_buf,
+            dbf_buf,
+            prj_buf,
+            "geom",
+            ppge.GeometryFormat.WKT,
+        )
+
+        # Save buffers to files for geopandas validation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = os.path.join(temp_dir, "test_literals")
+            for ext, buf in zip(
+                ["shp", "shx", "dbf", "prj"], [shp_buf, shx_buf, dbf_buf, prj_buf]
+            ):
+                with open(f"{base}.{ext}", "wb") as f:
+                    buf.seek(0)
+                    f.write(buf.read())
+
+            import geopandas
+
+            gdf = geopandas.read_file(f"{base}.shp")
+
+            # Validate the exported data
+            self.assertEqual(len(gdf), 2)
+
+            # Check first row (Cheyenne)
+            cheyenne_row = gdf.iloc[0]
+            self.assertEqual(cheyenne_row["name"], "Cheyenne")
+
+            # Check that Cheyenne point is at expected location
+            cheyenne_point = shapely.Point(-104.8, 41.1)
+            self.assertTrue(cheyenne_row.geometry.equals(cheyenne_point))
+
+            # Check second row (Denver)
+            denver_row = gdf.iloc[1]
+            self.assertEqual(denver_row["name"], "Denver")
+
+            # Check that Denver point is at expected location
+            denver_point = shapely.Point(-105.0, 39.7)
+            self.assertTrue(denver_row.geometry.equals(denver_point))
+
     def test_combine_shapefile_parts(self):
         """Test combining shapefile parts into a zip archive."""
         # Create test data for each shapefile part
