@@ -157,17 +157,11 @@ def _determine_shapetype_from_geometry(geometry, geom_format: GeometryFormat) ->
 
     geom_type = geometry.get("type", "").upper()
 
-    if geom_type == "POINT":
-        return pyshp.POINT
-    elif geom_type == "LINESTRING":
-        return pyshp.POLYLINE
-    elif geom_type == "POLYGON":
-        return pyshp.POLYGON
-    elif geom_type == "MULTIPOINT":
+    if geom_type in ("POINT", "MULTIPOINT"):
         return pyshp.MULTIPOINT
-    elif geom_type == "MULTILINESTRING":
+    elif geom_type in ("LINESTRING", "MULTILINESTRING"):
         return pyshp.POLYLINE
-    elif geom_type == "MULTIPOLYGON":
+    elif geom_type in ("POLYGON", "MULTIPOLYGON"):
         return pyshp.POLYGON
     else:
         return pyshp.NULL
@@ -247,6 +241,10 @@ def export_to_shapefile_from_rows(
                     raise ValueError(f"Field '{field.name}' conversion error: {e}")
             shpfile.record(**record)
             if shape is not None:
+                if shape["type"] == "Point":
+                    # Shapefile distinguishes between single and multi points
+                    shape["type"] = "Multi" + shape["type"]
+                    shape["coordinates"] = [shape["coordinates"]]
                 shpfile.shape(shape)
             else:
                 shpfile.null()
