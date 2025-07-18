@@ -7,6 +7,7 @@ import csv
 import dataclasses
 import enum
 import io
+import itertools
 import json
 import typing
 import zipfile
@@ -192,16 +193,19 @@ def export_to_shapefile_from_rows(
         geom_key: Key for the geometry field in the row dictionary
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
-    # Convert rows to list so we can iterate twice
-    rows_list = list(rows)
+    # Create a buffer for rows we need to inspect to determine shapetype
+    shapetype, inspected_rows, remaining_rows = pyshp.NULL, [], iter(rows)
 
-    # Determine shapetype from first non-null geometry
-    shapetype = pyshp.NULL
-    for row in rows_list:
+    # Iterate until we find a non-null geometry to determine shapetype
+    for row in remaining_rows:
+        inspected_rows.append(row)
         geometry = row.get(geom_key)
         if geometry is not None:
             shapetype = _determine_shapetype_from_geometry(geometry, geom_format)
             break
+
+    # Chain together inspected rows with remaining rows
+    all_rows = itertools.chain(inspected_rows, remaining_rows)
 
     converter = _get_record_converter(schema)
     with pyshp.Writer(shp=shp, shx=shx, dbf=dbf, shapeType=shapetype) as shpfile:
@@ -217,7 +221,7 @@ def export_to_shapefile_from_rows(
                     shpfile.field(field.name, "L")
                 else:
                     shpfile.field(field.name, "C")
-        for row in rows_list:
+        for row in all_rows:
             geometry = row[geom_key]
             if geometry is None:
                 shape = None
