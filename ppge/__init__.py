@@ -134,6 +134,34 @@ def combine_shapefile_parts(
                     zip_file.write(chunk)
 
 
+def _parse_geometry_safely(geometry, geom_format: GeometryFormat) -> dict | None:
+    """
+    Safely parse geometry data from WKT or GeoJSON format.
+
+    Args:
+        geometry: Geometry data in WKT or GeoJSON format (string or dict)
+        geom_format: Format of the geometry data
+
+    Returns:
+        dict: Parsed geometry dictionary, or None if parsing fails
+    """
+    if geometry is None:
+        return None
+
+    try:
+        if geom_format == GeometryFormat.WKT:
+            if isinstance(geometry, str):
+                return wkt.loads(geometry)
+            return geometry  # Already parsed
+        else:
+            if isinstance(geometry, str):
+                return json.loads(geometry)
+            return geometry  # Already parsed
+    except (json.JSONDecodeError, TypeError, ValueError):
+        # Return None for any parsing errors - this will result in null geometry
+        return None
+
+
 def _determine_shapetype_from_geometry(geometry, geom_format: GeometryFormat) -> int:
     """
     Determine the shapetype from geometry data.
@@ -145,17 +173,11 @@ def _determine_shapetype_from_geometry(geometry, geom_format: GeometryFormat) ->
     Returns:
         int: pyshp shapetype constant
     """
-    if geometry is None:
+    parsed_geometry = _parse_geometry_safely(geometry, geom_format)
+    if parsed_geometry is None:
         return pyshp.NULL
 
-    if geom_format == GeometryFormat.WKT:
-        if isinstance(geometry, str):
-            geometry = wkt.loads(geometry)
-    else:
-        if isinstance(geometry, str):
-            geometry = json.loads(geometry)
-
-    geom_type = geometry.get("type", "").upper()
+    geom_type = parsed_geometry.get("type", "").upper()
 
     if geom_type in ("POINT", "MULTIPOINT"):
         return pyshp.MULTIPOINT
@@ -217,12 +239,7 @@ def export_to_shapefile_from_rows(
                     shpfile.field(field.name, "C")
         for row in all_rows:
             geometry = row[geom_key]
-            if geometry is None:
-                shape = None
-            elif geom_format == GeometryFormat.WKT:
-                shape = wkt.loads(geometry)
-            else:
-                shape = json.loads(geometry)
+            shape = _parse_geometry_safely(geometry, geom_format)
 
             # Check if geometry type matches the determined shapetype
             if shape is not None:
@@ -274,12 +291,7 @@ def export_to_geojson_from_rows(
     geojson = {"type": "FeatureCollection", "features": []}
     for row in rows:
         geometry = row[geom_key]
-        if geom_format == GeometryFormat.WKT:
-            if isinstance(geometry, str):
-                geometry = wkt.loads(geometry)
-        else:
-            if isinstance(geometry, str):
-                geometry = json.loads(geometry)
+        geometry = _parse_geometry_safely(geometry, geom_format)
         properties = {}
         for field in schema:
             if field.name == geom_key:
@@ -323,13 +335,11 @@ def export_to_csv_from_rows(
     writer.writeheader()
     for row in rows:
         geometry = row[geom_key]
-        if geom_format == GeometryFormat.GEOJSON:
-            if isinstance(geometry, str):
-                geometry = json.loads(geometry)
-            geometry = wkt.dumps(geometry)
+        parsed_geometry = _parse_geometry_safely(geometry, geom_format)
+        if parsed_geometry is not None:
+            geometry = wkt.dumps(parsed_geometry)
         else:
-            if not isinstance(geometry, str):
-                geometry = wkt.dumps(geometry)
+            geometry = None  # Will result in empty geometry field
         csv_row = {}
         for field in schema:
             if field.name == geom_key:

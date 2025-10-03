@@ -20,6 +20,7 @@ BIGQUERY_POLY_CSV = "wy-co-wkt-bigquery.csv"
 SNOWFLAKE_POLY_CSV = "wy-co-geojson-snowflake.csv"
 BIGQUERY_POINT_CSV = "denver-cheyenne-wkt-bigquery.csv"
 SNOWFLAKE_POINT_CSV = "denver-cheyenne-geojson-snowflake.csv"
+BIGQUERY_MALFORMED_CSV = "wy-co-wkt-malformed.csv"
 
 
 def csv_row_iterator(csv_path: str):
@@ -504,6 +505,120 @@ class TestGeospatialExport(unittest.TestCase):
         buf = io.BytesIO()
         with self.assertRaises(ValueError):
             ppge.process_bigquery_rows_to_csv(schema, rows, buf)
+
+    def test_malformed_wkt_rows_to_shapefile(self):
+        """Test that malformed WKT is handled gracefully in shapefile export."""
+        rows = list(csv_row_iterator(BIGQUERY_MALFORMED_CSV))
+        self.assertEqual(len(rows), 3)  # 2 valid + 1 malformed
+
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+        fs = io.BytesIO(), io.BytesIO(), io.BytesIO(), io.BytesIO()
+
+        # This should not raise an error despite malformed WKT
+        ppge.process_bigquery_rows_to_shapefile(schema, rows, *fs)
+
+        # Verify the output contains only the 2 valid geometries
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base = os.path.join(temp_dir, "test_malformed_wkt")
+            for ext, buf in zip(["shp", "shx", "dbf", "prj"], fs):
+                with open(f"{base}.{ext}", "wb") as f:
+                    buf.seek(0)
+                    f.write(buf.read())
+
+            import geopandas
+
+            gdf = geopandas.read_file(f"{base}.shp")
+
+            # Should have 2 valid rows (malformed becomes null and gets skipped or has null geometry)
+            self.assertLessEqual(len(gdf), 3)  # At most 3 rows (2 valid + 1 null)
+
+            # Check that we have Wyoming and Colorado
+            valid_names = [
+                row.name
+                for row in gdf.itertuples()
+                if row.geometry is not None and not row.geometry.is_empty
+            ]
+            self.assertIn("Wyoming", valid_names)
+            self.assertIn("Colorado", valid_names)
+
+    def test_malformed_wkt_rows_to_geojson(self):
+        """Test that malformed WKT is handled gracefully in GeoJSON export."""
+        rows = list(csv_row_iterator(BIGQUERY_MALFORMED_CSV))
+        self.assertEqual(len(rows), 3)
+
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+
+        # This should not raise an error despite malformed WKT
+        ppge.process_bigquery_rows_to_geojson(schema, rows, buf)
+
+        # Verify the output
+        buf.seek(0)
+        text = buf.read().decode("utf-8")
+        geojson_data = json.loads(text)
+
+        self.assertEqual(geojson_data["type"], "FeatureCollection")
+        features = geojson_data["features"]
+
+        # Should have 3 features (2 valid + 1 with null geometry)
+        self.assertEqual(len(features), 3)
+
+        # Check valid features
+        valid_features = [f for f in features if f["geometry"] is not None]
+        self.assertEqual(len(valid_features), 2)
+
+        feature_names = [f["properties"]["name"] for f in valid_features]
+        self.assertIn("Wyoming", feature_names)
+        self.assertIn("Colorado", feature_names)
+
+        # Check that malformed feature has null geometry
+        malformed_feature = [
+            f for f in features if f["properties"]["name"] == "BadState"
+        ][0]
+        self.assertIsNone(malformed_feature["geometry"])
+
+    def test_malformed_wkt_rows_to_csv(self):
+        """Test that malformed WKT is handled gracefully in CSV export."""
+        rows = list(csv_row_iterator(BIGQUERY_MALFORMED_CSV))
+        self.assertEqual(len(rows), 3)
+
+        schema = [
+            ppge.Field("geom", ppge.FieldType.GEOG, False),
+            ppge.Field("name", ppge.FieldType.STR, False),
+        ]
+        buf = io.BytesIO()
+
+        # This should not raise an error despite malformed WKT
+        ppge.process_bigquery_rows_to_csv(schema, rows, buf)
+
+        # Verify the output
+        buf.seek(0)
+        text = buf.read().decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text))
+        output_rows = list(reader)
+
+        # Should have 3 rows
+        self.assertEqual(len(output_rows), 3)
+
+        # Check that valid rows have WKT geometry
+        valid_rows = [
+            row for row in output_rows if row["geometry"] and row["geometry"] != "None"
+        ]
+        self.assertEqual(len(valid_rows), 2)
+
+        valid_names = [row["name"] for row in valid_rows]
+        self.assertIn("Wyoming", valid_names)
+        self.assertIn("Colorado", valid_names)
+
+        # Check that malformed row has empty/null geometry
+        malformed_row = [row for row in output_rows if row["name"] == "BadState"][0]
+        self.assertIn(malformed_row["geometry"], [None, "", "None"])
 
 
 if __name__ == "__main__":
