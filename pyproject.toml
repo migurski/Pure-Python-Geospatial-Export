@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Pure-Python-Geospatial-Export"
-version = "0.1.2"
+version = "0.1.3"
 
 [project.optional-dependencies]
 test = [

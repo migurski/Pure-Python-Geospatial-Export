@@ -288,7 +288,8 @@ def export_to_geojson_from_rows(
         geom_format: Format of geometry data (WKT or GeoJSON)
     """
     converter = _get_record_converter(schema)
-    geojson = {"type": "FeatureCollection", "features": []}
+    textfile, firstrow = io.TextIOWrapper(geojsonfile, encoding="utf-8"), True
+    textfile.write('{"type": "FeatureCollection", "features": [')
     for row in rows:
         geometry = row[geom_key]
         geometry = _parse_geometry_safely(geometry, geom_format)
@@ -301,9 +302,9 @@ def export_to_geojson_from_rows(
             except Exception as e:
                 raise ValueError(f"Field '{field.name}' conversion error: {e}")
         feature = {"type": "Feature", "geometry": geometry, "properties": properties}
-        geojson["features"].append(feature)
-    textfile = io.TextIOWrapper(geojsonfile, encoding="utf-8")
-    json.dump(geojson, textfile, indent=2)
+        textfile.write(f'{"" if firstrow else ","}\n{json.dumps(feature)}')
+        firstrow = False
+    textfile.write('\n]}\n')
     textfile.flush()
     textfile.detach()  # Prevent closing the underlying BytesIO buffer
 
